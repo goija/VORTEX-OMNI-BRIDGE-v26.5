@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>VORTEX OMNI-BRIDGE - COMMAND CENTER</title>
+    <style>
+        html, body { 
+            height: 100vh; margin: 0; padding: 0; overflow: hidden;
+            background-color: #050505; color: #00ffcc; font-family: 'Courier New', monospace;
+        }
+        header { 
+            height: 60px; border-bottom: 2px solid #00ffcc; text-align: center; 
+            display: flex; flex-direction: column; justify-content: center;
+            background: rgba(10,10,10,0.9);
+        }
+        h1 { margin: 0; font-size: 1.5rem; letter-spacing: 3px; }
+        
+        /* Dashboard Layout: 2 kolommen */
+        .dashboard-grid {
+            display: grid; grid-template-columns: 380px 1fr;
+            height: calc(100vh - 60px); gap: 15px; padding: 15px;
+        }
+        .card { 
+            background: rgba(10,10,10,0.85); border: 1px solid #1a1a1a; 
+            border-left: 3px solid #00ffcc; display: flex; flex-direction: column;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+        }
+        .card.sync-module { border-left-color: #e67e22; }
+        h2 { font-size: 0.8rem; padding: 8px 12px; margin: 0; background: #111; color: #ff9900; border-bottom: 1px solid #222; }
+
+        iframe { width: 100%; flex: 1; border: none; background: transparent; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>VORTEX OMNI-BRIDGE v26.5</h1>
+</header>
+
+<div class="dashboard-grid">
+    <div class="card sync-module">
+        <h2>> MODULE 1: SONIC COMMAND</h2>
+        <iframe id="leftFrame" src="index.html"></iframe>
+    </div>
+    <div class="card">
+        <h2>> MODULE 2: MASTER DIRECTORY</h2>
+        <iframe id="rightFrame" src="klokbeker.html"></iframe>
+    </div>
+</div>
+
+<script>
+    // --- OMNI-SYNC COMMUNICATIE HUB ---
+    window.addEventListener('message', function(event) {
+        if (event.data.type === 'VORTEX_SYNC_LOCKED') {
+            const rightFrame = document.getElementById('rightFrame').contentWindow;
+            // Vertel de rechter module dat de 108 graden sync is voltooid
+            rightFrame.postMessage({ type: 'ACTIVATE_RESONATOR' }, '*');
+        }
+    });
+</script>
+
+</body>
+</html>

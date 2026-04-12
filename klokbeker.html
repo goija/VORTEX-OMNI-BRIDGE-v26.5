@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>VORTEX v26.0 // OMNI-NEXUS MASTER DIRECTORY</title>
-    <!-- CryptoJS voor de AES (Rijndael) Encryptie Module -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         :root {
             /* VORTEX THEME COLORS */
-            --bg-color: #020406;
+            --bg-color: transparent; /* Aangepast voor naadloze bridge integratie */
             --grid-color: #0a1f24;
             --text-main: #00ffcc;
             --text-accent: #ff9900;
@@ -231,7 +230,6 @@
 
         <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
 
-        <!-- Sidebar / Directory -->
         <aside class="sidebar" id="mainMenu">
             <h2>> DIRECTORY (ASSETS)</h2>
             <ul class="tree-root">
@@ -252,7 +250,6 @@
                             </ul>
                         </li>
                         
-                        <!-- DOMEIN 8: CRYPTOGRAFIE -->
                         <li class="domain-group"><span class="caret">Domein 8: Cryptografie</span>
                             <ul class="nested hidden">
                                 <li class="node" onclick="loadModule('els_hebrew')" style="color: var(--color-terracotta);">├─ Tora ELS [3485^7]</li>
@@ -269,7 +266,6 @@
                             </ul>
                         </li>
                         
-                        <!-- DOMEIN 10: OOSTERSE KOSMOLOGIE -->
                         <li class="domain-group"><span class="caret">Domein 10: Oosterse Kosmologie</span>
                             <ul class="nested hidden">
                                 <li class="node" onclick="loadModule('hexagram_lookup')" style="color: var(--color-gulden);">├─ I Tjing Orakel</li>
@@ -297,12 +293,10 @@
             </ul>
         </aside>
 
-        <!-- Main Display Area -->
         <main class="main-panel">
             <div class="visual-wrapper">
                 <canvas id="vortexCanvas" width="600" height="600"></canvas>
                 
-                <!-- Alle Data Grids -->
                 <div id="matrix-grid" class="overlay-grid"></div>
                 <div id="els-grid" class="overlay-grid"></div>
                 <div id="hexagram-grid" class="overlay-grid"></div>
@@ -310,7 +304,6 @@
                 <div id="omnicipher-grid" class="overlay-grid"></div>
                 <div id="luopan-grid" class="overlay-grid"></div>
                 
-                <!-- AES INTERFACE -->
                 <div id="aes-grid" class="overlay-grid" style="display: none;">
                     <div class="aes-title">> AES-256 / RIJNDAEL DECRYPTOR</div>
                     <input type="text" id="aes-key" class="aes-key" placeholder="Enter Secret Key (e.g. Vortex123)" autocomplete="off">
@@ -321,8 +314,7 @@
                     </div>
                     <textarea id="aes-res" class="aes-input" placeholder="Output (Ciphertext / Plaintext) will appear here..." readonly></textarea>
                     <div class="aes-state-matrix" id="aes-state-matrix">
-                        <!-- 4x4 State Matrix vult zich via JS -->
-                    </div>
+                        </div>
                 </div>
             </div>
 
@@ -710,6 +702,25 @@
         }
 
         renderCanvas(); 
+        
+        // --- OMNI-SYNC COMMUNICATIE HUB ---
+        // Ontvangt het signaal van sonc-bridge.html (dat weer afkomstig is van index.html)
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'ACTIVATE_RESONATOR') {
+                console.log("OS: Signaal ontvangen! Resonator laden...");
+                if (typeof loadModule === "function") {
+                    loadModule('klokbeker_res'); 
+                    
+                    // Visuele feedback (een oranje flits over het info paneel)
+                    const box = document.getElementById("detail-content");
+                    if(box) {
+                        box.style.borderColor = "#ff9900";
+                        box.style.boxShadow = "0 0 20px #ff9900";
+                        setTimeout(() => { box.style.boxShadow = "none"; }, 2000);
+                    }
+                }
+            }
+        });
     </script>
 </body>
 </html>
