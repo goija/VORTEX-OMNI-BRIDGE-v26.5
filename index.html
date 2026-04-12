@@ -2,1155 +2,207 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VORTEX v15.6 // CLOUD-SYNC P2P NEXUS // LIVE TRACKER</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
-    
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
-    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VORTEX OMNI-BRIDGE // FIXED SYNC</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         :root {
-            --fc-100-black: #050508; --laser-cyan: #00e5ff; --lithos-amber: #ffb000;
-            --matrix-green: #00ff41; --alert-red: #d92534; --sirius-blue: #0044ff;
-            --droste-purple: #ff00ff; --panel-bg: rgba(5, 10, 15, 0.95); --border-dim: #1a2a3a;
-            --font-mono: 'Courier New', Courier, monospace;
+            --bg: #020406; --main: #00ffcc; --els: #e67e22; --accent: #ff9900; --muted: #4a7c7c;
         }
-        * { box-sizing: border-box; cursor: crosshair; touch-action: manipulation; -webkit-tap-highlight-color: transparent;}
-        
-        body, html { 
-             background-color: var(--fc-100-black); color: #e0e0e0; font-family: var(--font-mono); 
-             margin: 0; padding: 0; width: 100vw; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden;
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            background: var(--bg); color: var(--main); font-family: 'Courier New', monospace; 
+            margin: 0; padding: 10px; height: 100vh; overflow: hidden;
         }
-        header { flex: 0 0 50px; background: #000; border-bottom: 2px solid var(--laser-cyan); padding: 0 20px; display: flex; justify-content: space-between; align-items: center; z-index: 2000; box-shadow: 0 0 15px rgba(0, 229, 255, 0.2); position: sticky; top: 0;}
-        .title { color: var(--laser-cyan); font-size: 1.1em; font-weight: bold; letter-spacing: 1px; }
-        .status-dot { width: 12px; height: 12px; border-radius: 50%; background: #333; transition: 0.3s; display: inline-block; vertical-align: middle; margin-left: 10px; box-shadow: 0 0 4px #000;}
-        .status-online { background: var(--matrix-green) !important; box-shadow: 0 0 10px var(--matrix-green) !important; }
-        .main-grid { display: grid; grid-template-columns: 320px 1fr 340px; grid-template-rows: 1fr 180px; width: 100%; height: calc(100vh - 50px); transition: all 0.4s ease; }
-        .panel { background: var(--panel-bg); border-bottom: 1px solid var(--border-dim); padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; z-index: 10; }
-        .panel-header { color: var(--lithos-amber); font-size: 0.85em; font-weight: bold; border-bottom: 1px solid var(--lithos-amber); padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
-        #panelLeft { grid-column: 1 / 2; grid-row: 1 / 2; border-right: 1px solid var(--laser-cyan); }
-        .maps-container { display: flex; flex-direction: column; grid-column: 2 / 3; grid-row: 1 / 2; position: relative; background: #000; overflow: hidden; }
-        #panelRight { grid-column: 3 / 4; grid-row: 1 / 2; border-left: 1px solid var(--laser-cyan); overflow-y: auto; }
-        .vp-resize-btns { position: absolute; bottom: 15px; left: 15px; z-index: 1000; display: flex; gap: 5px; }
-        .btn-vp { background: rgba(0,0,0,0.8); border: 1px solid var(--laser-cyan); color: var(--laser-cyan); width: 35px; height: 35px; cursor: pointer; font-weight: bold; border-radius: 4px; font-size: 1.2em; display: flex; justify-content: center; align-items: center;}
-        .btn-vp:hover { background: var(--laser-cyan); color: #000; box-shadow: 0 0 10px var(--laser-cyan); }
-        .transform-layer { transition: transform 0.5s ease, filter 0.5s ease; transform-origin: center center; }
+
+        /* --- RESPONSIVE LAYOUT ENGINE --- */
+        .bridge-container { display: grid; gap: 15px; height: 100%; }
         
-        #sensorCam { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; filter: grayscale(1) sepia(1) hue-rotate(130deg) contrast(1.5) brightness(0.8); }
-        #trackerMap { flex: 1.2; background: #000; border-bottom: 1px solid var(--laser-cyan); position: relative; z-index: 2; overflow: hidden; }
-        #mapWrapper { width: 100%; height: 100%; transition: transform 0.5s ease, filter 0.5s ease; transform-origin: center center; }
-        #astroCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 405; pointer-events: none; display: none; }
-        
-        #stratiMap { flex: 1; background: #000; position: relative; overflow: hidden; z-index: 2; }
-        #glCanvas { width: 100%; height: 100%; display: block; position: absolute; top: 0; left: 0; z-index: 3; mix-blend-mode: screen; opacity: 0.9; }
-        #plotlyCanvas { width: 100%; height: 100%; display: none; position: absolute; top: 0; left: 0; z-index: 4; }
-        
-        .map-label { position: absolute; top: 10px; right: 10px; z-index: 400; background: rgba(0,0,0,0.8); padding: 4px 8px; border: 1px solid var(--laser-cyan); font-size: 0.65em; color: var(--laser-cyan); pointer-events: none; }
-        #compassContainer { position: absolute; top: 15px; left: 15px; width: 60px; height: 60px; border: 2px solid var(--matrix-green); border-radius: 50%; z-index: 1000; background: rgba(0,0,0,0.6); box-shadow: 0 0 10px rgba(0,255,65,0.2); display: flex; justify-content: center; align-items: center; transition: all 0.3s ease; }
-        #compassDial { width: 100%; height: 100%; position: absolute; border-radius: 50%; transition: transform 0.1s ease-out; }
-        #compassDial::before { content: 'N'; position: absolute; top: 2px; left: 50%; transform: translateX(-50%); color: var(--alert-red); font-size: 10px; font-weight: bold; }
-        #compassDial::after { content: 'S'; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); color: var(--matrix-green); font-size: 10px; font-weight: bold; }
-        .compass-e { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); color: #aaa; font-size: 10px; }
-        .compass-w { position: absolute; left: 4px; top: 50%; transform: translateY(-50%); color: #aaa; font-size: 10px; }
-        #compassNeedle { width: 2px; height: 50px; background: linear-gradient(to bottom, var(--alert-red) 50%, #fff 50%); position: absolute; z-index: 1001; }
-        #compassHeading { position: absolute; bottom: -20px; font-size: 10px; color: var(--matrix-green); text-align: center; width: 100%; font-weight: bold; background: #000; padding: 2px; border: 1px solid var(--matrix-green); border-radius: 3px;}
-        .terminal-container { grid-column: 1 / 4; grid-row: 2 / 3; background: #000; border-top: 1px solid var(--laser-cyan); display: flex; flex-direction: column; z-index: 100; min-height: 180px; }
-        .terminal-output { flex-grow: 1; padding: 10px; overflow-y: auto; font-size: 0.75em; color: #8af; line-height: 1.4; max-height: 140px;}
-        .terminal-input-wrapper { display: flex; padding: 10px 15px; background: #050508; border-top: 1px solid #1a2a3a; align-items: center; }
-        #cliInput { flex-grow: 1; background: transparent; border: none; color: var(--matrix-green); font-family: inherit; outline: none; font-size: 16px; }
-        .btn-action { background: #111; color: var(--laser-cyan); border: 1px solid var(--laser-cyan); padding: 12px 8px; font-size: 0.75em; cursor: pointer; transition: 0.2s; width: 100%; font-weight: bold; margin-top: 5px; border-radius: 4px;}
-        .btn-action:hover:not(:disabled) { background: var(--laser-cyan); color: #000; box-shadow: 0 0 10px var(--laser-cyan); }
-        .btn-action:disabled { opacity: 0.3; cursor: not-allowed; border-color: #444; color: #666; }
-        .data-box { background: rgba(0, 255, 65, 0.05); border: 1px solid #1a2a3a; padding: 10px; font-size: 0.75em; display: flex; flex-direction: column; gap: 6px; }
-        .stat-row { display: flex; justify-content: space-between; align-items: center; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 8px; background: #000; color: var(--matrix-green); border: 1px solid var(--laser-cyan); font-family: inherit; font-weight: bold; outline: none; font-size: 16px; margin-bottom: 5px;}
-        #qrOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 3000; flex-direction: column; align-items: center; justify-content: center; }
-        #qrImg { border: 4px solid var(--matrix-green); border-radius: 8px; background: #fff; padding: 10px; width: 220px; height: 220px; }
-        .hidden-input { display: none; }
-        
-        #astroInfoPanel { display: none; margin-top: 15px; border-color: var(--sirius-blue); background: rgba(0, 68, 255, 0.05); }
-        .vega-stat { color: #aaa; font-size: 0.7em; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 3px; display: flex; justify-content: space-between;}
-        .vega-val { font-weight: bold; font-family: monospace; letter-spacing: 0.5px;}
-        .val-sun { color: #ffb000; }
-        .val-moon { color: #e0e0e0; }
-        .val-vega { color: var(--laser-cyan); }
-        .val-deneb { color: #8af; }
-        .tracker-active { color: var(--alert-red); animation: blink 1s infinite; font-weight: bold;}
-        
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
-        @media screen and (max-width: 950px) {
-            .main-grid { display: flex; flex-direction: column; height: auto; }
-            .maps-container { height: 50vh; min-height: 400px; width: 100%; order: -1; border-bottom: 2px solid var(--laser-cyan); }
-            #panelLeft, #panelRight { border: none; border-bottom: 1px solid var(--border-dim); }
-            .terminal-container { height: auto; min-height: 250px; width: 100%; border-top: 2px solid var(--laser-cyan); }
+        @media (min-width: 1024px) {
+            .bridge-container { grid-template-columns: 350px 1fr 380px; }
+            .mobile-only { display: none; }
         }
-        body.viewport-maximized header { display: none !important; }
-        body.viewport-maximized .terminal-container { display: none !important; }
-        body.viewport-maximized .main-grid { height: 100vh !important; grid-template-rows: 1fr !important; grid-template-columns: 100% !important; display: grid !important; }
-        body.viewport-maximized #panelLeft, body.viewport-maximized #panelRight { display: none !important; }
-        body.viewport-maximized .maps-container { grid-column: 1 / -1 !important; grid-row: 1 / -1 !important; border: none !important; height: 100vh !important;}
+        @media (max-width: 1023px) {
+            .bridge-container { grid-template-columns: 1fr; overflow-y: auto; }
+            .desktop-only { display: none; }
+            body { overflow-y: auto; }
+        }
+
+        .panel { 
+            background: rgba(2, 5, 8, 0.95); border: 1px solid rgba(0, 255, 204, 0.2); 
+            border-radius: 8px; padding: 15px; display: flex; flex-direction: column;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+        }
+
+        h3 { font-size: 0.9rem; color: var(--accent); margin: 0 0 10px 0; text-transform: uppercase; border-bottom: 1px solid rgba(0,255,204,0.1); }
+
+        /* --- VISUAL CORE --- */
+        .viz-box { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; position: relative;}
+        canvas { background: #000; border-radius: 50%; border: 1px solid var(--muted); box-shadow: 0 0 20px rgba(0,255,204,0.1); }
+        
+        #klokbeker-3d { 
+            width: 90px; height: 130px; border: 2px solid var(--main); 
+            border-radius: 20% 20% 45% 45%; transition: all 0.1s;
+        }
+        .vibration { animation: res-shake 0.05s infinite; border-color: var(--els) !important; box-shadow: 0 0 30px var(--els); }
+        @keyframes res-shake { 0% { transform: scale(1); } 50% { transform: scale(1.03) rotate(1deg); } 100% { transform: scale(1); } }
+
+        /* --- UI ELEMENTS --- */
+        .terminal { background: #000; border: 1px solid var(--muted); padding: 10px; font-size: 0.7rem; color: #888; height: 130px; overflow-y: auto; }
+        .qr-wrap { background: #fff; padding: 10px; width: 150px; height: 150px; align-self: center; border: 4px solid var(--main); margin-top: 10px;}
+        .btn { width: 100%; padding: 15px; background: rgba(0,255,204,0.1); border: 1px solid var(--main); color: var(--main); cursor: pointer; font-weight: bold; border-radius: 4px; border: 1px solid var(--main); }
+        .btn:active { background: var(--main); color: #000; }
+        .heb-char { font-size: 2.2rem; color: var(--els); text-align: center; display: none; text-shadow: 0 0 10px var(--els); margin: 10px 0;}
     </style>
 </head>
 <body>
-<header>
-    <div class="title">VORTEX v15.6 // CLOUD-SYNC P2P // LIVE TRACKER</div>
-    <div style="display:flex; align-items:center;">
-        <span id="nodeLabel" style="color:var(--matrix-green); font-size:0.7em; font-weight:bold;">NODE: INIT</span>
-        <div id="p2pIndicator" title="PeerJS Tunnel Link"></div>
-    </div>
-</header>
 
-<div class="main-grid">
-    <div class="panel" id="panelLeft">
-        <div class="panel-header">PEERJS CLOUD TUNNEL</div>
-        <div class="data-box" style="border-color: var(--laser-cyan);">
-            <div class="stat-row"><span>TUNNEL STATUS:</span><span id="tunnelStatusTxt" style="color:var(--alert-red); font-weight:bold;">OFFLINE</span></div>
-            <div class="stat-row"><span>MIJN CODE:</span><span id="myPeerIdTxt" style="color:var(--matrix-green); font-weight:bold;">-</span></div>
-            <button class="btn-action" style="margin-top:10px;" onclick="initPeerJSMaster()">1. INIT MASTER NODE</button>
-            <button class="btn-action" style="border-color:var(--matrix-green); color:var(--matrix-green);" onclick="toggleQR()">TONEN QR CODE</button>
-            <hr style="border: 0; border-bottom: 1px dashed var(--border-dim); margin: 10px 0;">
-            <input type="text" id="targetPeerId" placeholder="Vul Master Code In..." style="text-transform: lowercase;">
-            <button class="btn-action" style="border-color:var(--lithos-amber); color:var(--lithos-amber);" onclick="connectToPeerJS()">2. CONNECT TO MASTER</button>
-        </div>
-        <div class="panel-header" style="margin-top:15px;">TRANSFORM MATRIX</div>
-        <div class="data-box" id="transformBox">
-            <div class="stat-row"><span>MIRROR X:</span><span id="st-mir" style="color:#666;">OFF</span></div>
-            <div class="stat-row"><span>POLAR FLIP:</span><span id="st-pol" style="color:#666;">OFF</span></div>
-            <div class="stat-row"><span>HEADING:</span><span id="st-head" style="color:var(--matrix-green);">0°</span></div>
-            <div class="stat-row" title="[X, Y, Z, W]"><span>QUATERNION:</span><span id="st-quat" style="color:var(--sirius-blue); font-size: 0.75em; letter-spacing:-0.5px;">[0.0, 0.0, 0.0, 1.0]</span></div>
-        </div>
-        <button class="btn-action" style="border-color:var(--droste-purple); color:var(--droste-purple);" onclick="executeCoreCommand('mirror all')">TOGGLE MIRROR</button>
-        <button class="btn-action" style="border-color:var(--droste-purple); color:var(--droste-purple);" onclick="executeCoreCommand('polarflip all')">TOGGLE POLARFLIP</button>
-        <div class="panel-header" style="margin-top:15px;">SECURE DATA VAULT (AES-GCM)</div>
-        <div class="data-box" style="border-color: var(--alert-red);">
-            <input type="password" id="cryptoPassword" placeholder="AES Password Key..." style="color:#0f0;">
-            <input type="file" id="geoJsonInput" class="hidden-input" accept=".geojson,.json">
-            <input type="file" id="cryptoFileInput" class="hidden-input">
-            <input type="file" id="p2pFileInput" class="hidden-input">
-            
-            <button class="btn-action" style="border-color:var(--alert-red); color:var(--alert-red);" onclick="executeCoreCommand('encrypt pdf')">ENCRYPT LOKAAL -> .DAT</button>
-            <button class="btn-action" style="border-color:var(--matrix-green); color:var(--matrix-green);" onclick="executeCoreCommand('decrypt pdf')">DECRYPT LOKAAL -> .PDF</button>
-            
-            <hr style="border: 0; border-bottom: 1px dashed var(--border-dim); margin: 8px 0;">
-            <button class="btn-action" style="border-color:var(--sirius-blue); color:var(--laser-cyan);" onclick="document.getElementById('p2pFileInput').click()">SEND FILE VIA P2P (E2E SECURE)</button>
-        </div>
-    </div>
-
-    <div class="maps-container">
-        <div class="vp-resize-btns">
-            <button class="btn-vp" onclick="executeCoreCommand('fullscreen on')" title="Fullscreen">⛶</button>
-            <button class="btn-vp" onclick="executeCoreCommand('fullscreen off')" title="Split View">✕</button>
-        </div>
-        <div id="trackerMap">
-            <div id="mapWrapper" class="transform-layer"></div>
-            <div class="map-label">XY-DOMAIN // MAPPING NEXUS</div>
-            <div id="compassContainer">
-                <div id="compassDial"><span class="compass-e">E</span><span class="compass-w">W</span></div>
-                <div id="compassNeedle"></div>
+    <div class="bridge-container">
+        <div class="panel">
+            <h3>> SONIC COMMAND</h3>
+            <div class="terminal" id="logs">SYSTEM READY... SCANNING FOR AZIMUTH 108°</div>
+            <button class="btn" id="bootBtn" onclick="bootBridge()">ACTIVATE SONIC BRIDGE</button>
+            <div style="margin-top:20px; font-size:0.7rem; border-top:1px solid #222; padding-top:10px;">
+                STATUS: <span id="sys-status">IDLE</span><br>
+                OSCILLATOR: <span id="osc-stat" style="color:red">OFF</span><br>
+                RESONANCE: <span id="freq-val" style="color:var(--els)">0 Hz</span>
             </div>
-            <canvas id="astroCanvas" class="transform-layer"></canvas>
         </div>
-        <div id="stratiMap">
-            <div class="map-label" style="border-color:var(--lithos-amber); color:var(--lithos-amber);"><span id="z-label">Z-DOMAIN // SHADER</span></div>
-            <canvas id="glCanvas"></canvas>
-            <div id="plotlyCanvas" class="transform-layer"></div>
-            <video id="sensorCam" class="transform-layer" autoplay playsinline></video>
-        </div>
-    </div>
 
-    <div class="panel" id="panelRight">
-        <div class="panel-header">OMNI-SHADER CONTROLS</div>
-        <button class="btn-action" onclick="executeCoreCommand('view lidar')">VIEW LIDAR</button>
-        <button class="btn-action" onclick="executeCoreCommand('view cyclone')">VIEW CYCLONES</button>
-        <button class="btn-action" onclick="executeCoreCommand('view resonantie')">VIEW RESONANCE</button>
-        <button class="btn-action" onclick="executeCoreCommand('view globe')" style="border-color:var(--laser-cyan); color:var(--laser-cyan);">VIEW 3D GLOBE (PLOTLY)</button>
-        
-        <div class="panel-header" style="margin-top:15px;">SENSORNET & AR</div>
-        <button class="btn-action" onclick="executeCoreCommand('start sensornet')" style="background:var(--matrix-green); color:#000; padding:10px;">▶ ACTIVATE SENSORNET</button>
-        
-        <div class="panel-header" style="margin-top:15px;">MAPPING COMMANDS</div>
-        <button class="btn-action" onclick="executeCoreCommand('astro engine')" style="border-color:var(--sirius-blue); color:var(--sirius-blue);">TOGGLE ASTRO ENGINE</button>
-        <button class="btn-action" id="btnRotate" onclick="executeCoreCommand('rotate 180')" style="border-color:var(--laser-cyan); color:var(--laser-cyan);">KAART ROTATIE: 0°</button>
-        
-        <div class="data-box" id="astroInfoPanel">
-            <div class="panel-header" style="color: var(--laser-cyan); border-bottom-color: var(--laser-cyan); margin-bottom: 5px; display:flex; justify-content:space-between;">
-                ASTRO DATA NEXUS <span class="tracker-active">● LIVE</span>
+        <div class="panel">
+            <h3>> OMNI-VISUALIZER</h3>
+            <div class="viz-box">
+                <canvas id="radar" width="240" height="240"></canvas>
+                <div id="klokbeker-3d"></div>
             </div>
-            <div class="vega-stat"><span>ZON (Sol)</span> <span id="posSun" class="vega-val val-sun">SYNC...</span></div>
-            <div class="vega-stat"><span>MAAN (Luna)</span> <span id="posMoon" class="vega-val val-moon">SYNC...</span></div>
-            <div class="vega-stat"><span>VEGA (α Lyr)</span> <span id="posVega" class="vega-val val-vega">SYNC...</span></div>
-            <div class="vega-stat"><span>ZWAAN (α Cyg)</span> <span id="posDeneb" class="vega-val val-deneb">SYNC...</span></div>
+            <div id="sync-label" style="text-align:center; font-size:0.8rem; font-weight:bold; color:red;">LOCKED</div>
         </div>
-        
-        <button class="btn-action" onclick="executeCoreCommand('gis init')" style="border-color:var(--lithos-amber); color:var(--lithos-amber); margin-top:15px;">INIT GIS MATRIX</button>
-        <div style="display:flex; gap:5px;">
-            <button class="btn-action" onclick="executeCoreCommand('gis topo')">TOPO</button>
-            <button class="btn-action" onclick="executeCoreCommand('gis sat')">SAT</button>
-            <button class="btn-action" onclick="executeCoreCommand('gis infra')">INFRA</button>
-        </div>
-        <button class="btn-action" onclick="executeCoreCommand('plot sabic')" style="border-color:var(--alert-red); color:var(--alert-red); margin-top:15px;">PLOT SABIC PFBS</button>
-        <button class="btn-action" onclick="executeCoreCommand('plot laren')" style="border-color:var(--laser-cyan); color:var(--laser-cyan); margin-top:5px;">PLOT LAREN (OSM)</button>
-        <button class="btn-action" onclick="executeCoreCommand('plot stonehenge')" style="border-color:var(--droste-purple); color:var(--droste-purple); margin-top:5px;">PLOT STONEHENGE</button>
-        <button class="btn-action" onclick="executeCoreCommand('plot westkerke')" style="border-color:var(--matrix-green); color:var(--matrix-green); margin-top:5px;">PLOT WESTKERKE (46035)</button>
-        
-        <button class="btn-action" onclick="executeCoreCommand('import geojson')">IMPORT GEOJSON</button>
-        <button class="btn-action" onclick="executeCoreCommand('clear')" style="margin-top:10px; border-color:var(--alert-red); color:var(--alert-red);">PURGE SYSTEM</button>
-    </div>
 
-    <div class="terminal-container">
-        <div class="terminal-output" id="termOut"></div>
-        <div class="terminal-input-wrapper">
-            <span style="color:var(--laser-cyan); margin-right:10px; font-weight:bold;">vtx@mobile:~#</span>
-            <input type="text" id="cliInput" autofocus autocomplete="off" placeholder="Typ 'help'...">
+        <div class="panel">
+            <h3>> ELS M2M SYNC (19|7)</h3>
+            <div class="qr-wrap"><img id="qr" style="width:100%" src="https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=VORTEX_INIT" alt="QR"></div>
+            <div id="heb-out" class="heb-char">ח ג א ח ב</div>
+            <div style="font-size:0.7rem; color:var(--muted); text-align:center; margin-top: auto;">
+                CURRENT AZIMUTH: <span id="deg-val" style="color:#fff">0°</span>
+            </div>
         </div>
     </div>
-</div>
 
-<div id="qrOverlay" onclick="toggleQR()">
-    <h3 style="color:var(--matrix-green); font-size: 1em; margin-bottom: 20px;">SCAN OM TE VERBINDEN</h3>
-    <img id="qrImg" src="" alt="Vortex QR">
-    <p id="qrCodeText" style="color:#fff; font-size:1.5em; font-weight:bold; margin-top:20px; letter-spacing:3px;"></p>
-    <p style="color:#8af; margin-top:10px; font-size:0.8em;">Of voer de code handmatig in.</p>
-</div>
+    <script>
+        const canvas = document.getElementById('radar');
+        const ctx = canvas.getContext('2d');
+        const logs = document.getElementById('logs');
+        const beker = document.getElementById('klokbeker-3d');
+        const qr = document.getElementById('qr');
+        
+        let angle = 0;
+        let active = false;
+        let audioCtx, osc, gainNode;
 
-<script id="vertexShader" type="x-shader/x-vertex">
-    attribute vec2 position; varying vec2 vUv;
-    void main() { vUv = position * 0.5 + 0.5; gl_Position = vec4(position, 0.0, 1.0); }
-</script>
-<script id="fragmentShader" type="x-shader/x-fragment">
-    precision highp float;
-    varying vec2 vUv; uniform float u_time; uniform int u_mode;
-    uniform float u_heading; uniform float u_mirror; uniform float u_polar;
-    uniform vec4 u_quat; 
-    
-    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-    float noise(vec2 p) { vec2 i = floor(p); vec2 f = fract(p); vec2 u = f*f*(3.0-2.0*f); return mix(mix(hash(i + vec2(0.0,0.0)), hash(i + vec2(1.0,0.0)), u.x), mix(hash(i + vec2(0.0,1.0)), hash(i + vec2(1.0,1.0)), u.x), u.y); }
-    
-    void main() {
-        vec2 uv = vUv; vec2 cuv = uv - 0.5;
-        
-        vec2 qMod = vec2(u_quat.x, u_quat.y) * 1.5; 
-        cuv += qMod * 0.05; 
-        
-        float s = sin(u_heading); float c = cos(u_heading);
-        mat2 rot = mat2(c, -s, s, c); cuv = rot * cuv;
-        if (u_mirror > 0.5) cuv.x = -cuv.x;
-        float dist = length(cuv); float angle = atan(cuv.y, cuv.x);
-        
-        if (u_polar > 0.5) { dist = 0.5 - dist; cuv = vec2(cos(angle), sin(angle)) * dist; }
-        vec3 color = vec3(0.0);
-        
-        if(u_mode == 0) {
-            float n = noise((cuv+0.5) * 10.0 + u_time * 0.1);
-            color = mix(vec3(0.1, 0.05, 0.02), vec3(0.0, 0.2, 0.4), step(0.5, (cuv.y+0.5) + n*0.1));
-        } else if(u_mode == 1) { 
-             color = vec3(0.0, 1.0, 0.5) * step(0.97, fract((cuv.y+0.5) * 50.0 + sin((cuv.x+0.5) * 20.0 + u_time * 2.0)));
-        } else if(u_mode == 3) {
-            for(int i=0; i<6; i++) {
-                float t = float(i)*1.047 + u_time; vec2 center = vec2(cos(t), sin(t)) * 0.25;
-                float dDist = length(cuv - center);
-                float spiral = sin(atan((cuv.y - center.y), (cuv.x - center.x)) * 4.0 + dDist * 20.0 - u_time * 5.0);
-                color += vec3(0.1, 0.5, 1.0) * smoothstep(0.15, 0.0, dDist) * abs(spiral);
-            }
-        } else if(u_mode == 6) { 
-             color = vec3(1.0, 0.6, 0.0) * smoothstep(0.1, 0.9, abs(sin(dist * 50.0 - u_time * 4.0)));
+        function log(m) { 
+            const time = new Date().toLocaleTimeString();
+            logs.innerHTML += `<br>[${time}] ${m}`; 
+            logs.scrollTop = logs.scrollHeight; 
         }
-        
-        color -= vec3(0.1) * sin(uv.y * 200.0 - u_time * 10.0);
-        gl_FragColor = vec4(color, u_mode == 0 ? 0.0 : 0.8);
-    }
-</script>
 
-<script>
-    // --- 1. CORE & LOGGING ---
-    let myID = "vortex-" + Math.random().toString(16).substring(2, 6);
-    document.getElementById('nodeLabel').innerText = `NODE: ${myID.toUpperCase()}`;
-    const term = document.getElementById('termOut');
-    let peer = null;
-    let dataConn = null;
-    let isP2P = false;
-    let isRemoteSync = false;
-    let shaderMode = 0, mState = 0, pState = 0, astroActive = false, rotate180 = false;
-    
-    // Euler fallback & Quaternion status
-    let eulerState = { alpha: 0, beta: 0, gamma: 0 };
-    let qState = { x: 0, y: 0, z: 0, w: 1 };
-    
-    const log = (msg, type = 'sys', broadcast = true) => {
-        const c = { sys: '#8af', ok: '#0f4', err: '#f44', cmd: '#0ff', data: '#ffb000', math: '#f0f' }[type] || '#fff';
-        term.innerHTML += `<div><span style="color:#555;">[${new Date().toLocaleTimeString().split(' ')[0]}]</span> <span style="color:${c}">${msg}</span></div>`;
-        term.scrollTop = term.scrollHeight;
-        if (broadcast && isP2P && dataConn && dataConn.open) {
-            dataConn.send(JSON.stringify({ type: 'LOG', msg: msg, msgType: type, sender: myID }));
-        }
-    };
-
-    // --- 2. PEERJS WEBRTC (CLOUD SIGNALING) ---
-    function initPeerJSMaster() {
-        if(peer) peer.destroy();
-        log(`Contact maken met PeerJS Cloud Server als [${myID}]...`, "sys", false);
-        peer = new Peer(myID);
-        peer.on('open', (id) => {
-            log(`Master Cloud Node Geregistreerd. Koppel-ID: ${id}`, "ok", false);
-            document.getElementById('myPeerIdTxt').innerText = id;
-            document.getElementById('targetPeerId').value = id;
-        });
-        peer.on('connection', (conn) => {
-            log(`Inkomend verzoek van: ${conn.peer}...`, "sys", false);
-            handleDataConnection(conn);
-        });
-        peer.on('error', (err) => {
-            log(`PeerJS Fout: ${err.type}`, "err", false);
-            if (err.type === 'unavailable-id') {
-                log("ID bezet door netwerk-ghost. Nieuwe node genereren...", "sys", false);
-                myID = "vortex-" + Math.random().toString(16).substring(2, 6);
-                document.getElementById('nodeLabel').innerText = `NODE: ${myID.toUpperCase()}`;
-                setTimeout(initPeerJSMaster, 1000);
-            }
-        });
-    }
-    
-    function connectToPeerJS() {
-        const targetId = document.getElementById('targetPeerId').value.trim().toLowerCase();
-        if (!targetId) { log("Vul eerst de Master Code in.", "err", false); return; }
-        if (!peer) {
-            peer = new Peer();
-            peer.on('open', () => {
-                log(`Lokale client gereed. Verbinden met tunnel [${targetId}]...`, "sys", false);
-                const conn = peer.connect(targetId, { reliable: true });
-                handleDataConnection(conn);
-            });
-            peer.on('error', (err) => { log(`PeerJS Connectiefout: ${err.type}`, "err", false); });
-        } else {
-            const conn = peer.connect(targetId, { reliable: true });
-            handleDataConnection(conn);
-        }
-    }
-    
-    function handleDataConnection(conn) {
-        dataConn = conn;
-        dataConn.on('open', () => {
-            isP2P = true;
-            document.getElementById('tunnelStatusTxt').innerText = "ONLINE";
-            document.getElementById('tunnelStatusTxt').style.color = "var(--matrix-green)";
-            document.getElementById('p2pIndicator').classList.add('status-online');
-            log(`🚀 P2P DataChannel Verbonden met [${conn.peer}]!`, "ok", false);
-            triggerStateSync();
-        });
-        dataConn.on('close', () => {
-            isP2P = false;
-            document.getElementById('tunnelStatusTxt').innerText = "OFFLINE";
-            document.getElementById('tunnelStatusTxt').style.color = "var(--alert-red)";
-            document.getElementById('p2pIndicator').classList.remove('status-online');
-            log("❌ P2P Tunnel verbroken.", "err", false);
-        });
-        
-        // P2P Data Ontvanger
-        dataConn.on('data', async (data) => {
-            let d;
-            if (typeof data === 'string') {
-                try { d = JSON.parse(data); } catch(e) { return; }
-            } else {
-                d = data; 
-            }
-            if(!d) return;
-
-            // INKOMENDE SECURE FILE TRANSFER AFHANDELEN
-            if (d.type === 'SECURE_FILE') {
-                log(`[P2P] Inkomend beveiligd bestand: ${d.filename}...`, 'sys', false);
-                const pwd = document.getElementById('cryptoPassword').value;
-                if (!pwd) {
-                    log(`[SEC] Bestand ontvangen, maar geen AES-sleutel ingevoerd! Ontsleuteling mislukt.`, 'err', false);
-                    return;
-                }
-                try {
-                    const salt = new Uint8Array(d.salt);
-                    const iv = new Uint8Array(d.iv);
-                    const key = await deriveKey(pwd, salt);
-                    
-                    const decrypted = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, d.payload);
-                    
-                    const blob = new Blob([decrypted], { type: d.filetype });
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = d.filename;
-                    a.click();
-                    log(`[SEC] Bestand succesvol ontsleuteld en lokaal opgeslagen: ${d.filename}`, 'ok', false);
-                } catch(e) {
-                    log(`[ERR] Decryptie mislukt voor ${d.filename}. Sleutel onjuist of bestand corrupt!`, 'err', false);
-                }
-                return;
-            }
-
-            if (d.type === 'CMD') executeCoreCommand(d.cmd, true);
-            else if (d.type === 'SYNC_STATE') applySystemState(d.payload);
-            else if (d.type === 'LOG') log(d.msg, d.msgType, false);
-        });
-    }
-    
-    function toggleQR() {
-        const overlay = document.getElementById('qrOverlay');
-        if(overlay.style.display === 'flex') {
-            overlay.style.display = 'none';
-        } else {
-            const url = window.location.href;
-            const code = document.getElementById('myPeerIdTxt').innerText;
-            document.getElementById('qrImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}&color=00ff41&bgcolor=050508`;
-            document.getElementById('qrCodeText').innerText = `KOPPEL-CODE: ${code}`;
-            overlay.style.display = 'flex';
-        }
-    }
-
-    // --- 4. LEAFLET MAP & PLOTLY COUPLING ---
-    const map = L.map('mapWrapper', { zoomControl: false }).setView([51.481, 4.276], 12);
-    const baseTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-    let targetLayer = L.layerGroup().addTo(map);
-    let layerControl = null;
-    
-    // Zodra je de 2D kaart sleept, koppelt de 3D globe hier direct aan vast.
-    map.on('moveend', () => { 
-        let center = map.getCenter();
-        if(document.getElementById('plotlyCanvas').style.display === 'block' && !isPlotlyAutoSpinning && !streamActive) {
-             Plotly.relayout('plotlyCanvas', { 
-                'geo.projection.rotation.lon': center.lng,
-                'geo.projection.rotation.lat': center.lat
-            });
-        }
-        triggerStateSync(); 
-    });
-    
-    document.getElementById('geoJsonInput').addEventListener('change', (e) => {
-        const file = e.target.files[0]; if(!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
+        async function bootBridge() {
             try {
-                const geo = JSON.parse(ev.target.result);
-                L.geoJSON(geo, { style: {color: '#00ff41', weight: 2}, pointToLayer: (fd, latlng) => L.circleMarker(latlng, {radius:6, color:'#ffb000'}) }).addTo(targetLayer);
-                log(`GeoJSON geladen.`, "data");
-            } catch(err) { log("Fout bij parsen GeoJSON.", "err"); }
-        };
-        reader.readAsText(file);
-        e.target.value = '';
-    });
-    
-    function exportGeoJSON() {
-        const c = map.getCenter();
-        const data = { type: "FeatureCollection", features: [ { type: "Feature", properties: { name: "Vortex Target" }, geometry: { type: "Point", coordinates: [c.lng, c.lat] } } ] };
-        const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `vortex_export.geojson`; a.click();
-        log("GeoJSON export succesvol.", "ok");
-    }
-
-    // --- 5. ASTRO ENGINE OVERLAY (LIVE TRACKER) ---
-    const astroCanvas = document.getElementById('astroCanvas');
-    const aCtx = astroCanvas.getContext('2d');
-    let lastDomUpdate = 0; 
-    
-    const STARS = {
-        vega:  { name: "VEGA",  ra: 18.6156, dec: 38.7837, color: "var(--laser-cyan)", size: 3 },
-        deneb: { name: "ZWAAN", ra: 20.6905, dec: 45.2803, color: "#8af", size: 3 }
-    };
-    
-    function getObserver() {
-        const center = map.getCenter();
-        return new Astronomy.Observer(center.lat, center.lng, 0);
-    }
-    
-    function plotAstroBody(name, horizonCoords, color, size, radius, headingDeg) {
-        if (horizonCoords.altitude > 0) {
-            const projectRadius = (radius * 0.95) * ((90 - horizonCoords.altitude) / 90);
-            const azRad = (horizonCoords.azimuth - 90) * (Math.PI / 180);
-            
-            const objX = projectRadius * Math.cos(azRad);
-            const objY = projectRadius * Math.sin(azRad);
-            
-            aCtx.beginPath();
-            aCtx.fillStyle = color;
-            aCtx.shadowColor = color;
-            aCtx.shadowBlur = 10;
-            aCtx.arc(objX, objY, size, 0, Math.PI * 2);
-            aCtx.fill();
-            aCtx.shadowBlur = 0;
-            
-            aCtx.beginPath();
-            aCtx.strokeStyle = color;
-            aCtx.lineWidth = 1.5;
-            aCtx.globalAlpha = 0.8;
-            aCtx.moveTo(objX - 10, objY); aCtx.lineTo(objX + 10, objY);
-            aCtx.moveTo(objX, objY - 10); aCtx.lineTo(objX, objY + 10);
-            aCtx.moveTo(objX - 10, objY - 4); aCtx.lineTo(objX - 10, objY + 4);
-            aCtx.moveTo(objX + 10, objY - 4); aCtx.lineTo(objX + 10, objY + 4);
-            aCtx.stroke();
-            aCtx.globalAlpha = 1.0;
-            
-            aCtx.beginPath();
-            aCtx.strokeStyle = color;
-            aCtx.globalAlpha = 0.2;
-            aCtx.setLineDash([2, 4]);
-            aCtx.moveTo(0,0);
-            aCtx.lineTo(objX, objY);
-            aCtx.stroke();
-            aCtx.setLineDash([]);
-            aCtx.globalAlpha = 1.0;
-            
-            aCtx.save();
-            aCtx.translate(objX, objY);
-            aCtx.rotate(headingDeg * (Math.PI / 180));
-            aCtx.fillStyle = color;
-            aCtx.font = "bold 9px monospace";
-            
-            let scaleX = mState ? -1 : 1;
-            let scaleY = pState ? -1 : 1;
-            aCtx.scale(scaleX, scaleY);
-            
-            aCtx.fillText(name, 12, -12);
-            aCtx.restore();
-        }
-    }
-    
-    function drawAstroEngine(headingDeg) {
-        if(!astroActive) { 
-             aCtx.clearRect(0,0, astroCanvas.width, astroCanvas.height); 
-             return; 
-         }
-        
-         astroCanvas.width = astroCanvas.clientWidth; 
-         astroCanvas.height = astroCanvas.clientHeight;
-        const cx = astroCanvas.width / 2; 
-         const cy = astroCanvas.height / 2;
-        const radius = Math.min(cx, cy) * 0.8;
-        aCtx.clearRect(0,0, astroCanvas.width, astroCanvas.height);
-        aCtx.save(); 
-         aCtx.translate(cx, cy); 
-         aCtx.rotate(-headingDeg * (Math.PI / 180));
-        
-        let timeSec = performance.now() / 1000;
-        let sweepAngle = (timeSec * 1.5) % (Math.PI * 2);
-        aCtx.beginPath();
-        aCtx.moveTo(0,0);
-        aCtx.arc(0,0, radius, sweepAngle, sweepAngle + 0.3);
-        aCtx.fillStyle = "rgba(0, 255, 65, 0.15)";
-        aCtx.fill();
-        
-        aCtx.beginPath(); aCtx.strokeStyle = "rgba(255, 170, 0, 0.4)"; aCtx.lineWidth = 1;
-        for (let i = 0; i <= 51; i++) {
-            let a = i * ((2 * Math.PI) / 51); let x = radius * Math.cos(a); let y = radius * Math.sin(a);
-            if (i === 0) aCtx.moveTo(x, y); else aCtx.lineTo(x, y);
-        }
-        aCtx.stroke();
-        const angle108 = 1.88496;
-        aCtx.beginPath(); aCtx.strokeStyle = "rgba(0, 229, 255, 0.8)"; aCtx.lineWidth = 2;
-        aCtx.moveTo(0, 0); aCtx.lineTo(radius * Math.cos(0), radius * Math.sin(0));
-        aCtx.moveTo(0, 0); aCtx.lineTo(radius * Math.cos(angle108), radius * Math.sin(angle108));
-        aCtx.stroke();
-        aCtx.beginPath(); aCtx.fillStyle = "#ff00ff"; aCtx.shadowColor = "#ff00ff"; aCtx.shadowBlur = 15;
-        aCtx.arc(radius * Math.cos(angle108/2), radius * Math.sin(angle108/2), 6, 0, Math.PI * 2);
-        aCtx.fill(); aCtx.shadowBlur = 0;
-        
-        const date = new Date();
-        const observer = getObserver();
-        
-        let now = performance.now();
-        let updateDom = (now - lastDomUpdate > 500);
-        if (updateDom) lastDomUpdate = now;
-        
-        const sunEq = Astronomy.Equator('Sun', date, observer, true, true);
-        const sunHor = Astronomy.Horizon(date, observer, sunEq.ra, sunEq.dec, 'normal');
-        plotAstroBody("ZON", sunHor, "#ffb000", 5, radius, headingDeg);
-        if(updateDom && document.getElementById('posSun')) document.getElementById('posSun').innerText = `Az: ${sunHor.azimuth.toFixed(1)}° | Alt: ${sunHor.altitude.toFixed(1)}°`;
-        
-        const moonEq = Astronomy.Equator('Moon', date, observer, true, true);
-        const moonHor = Astronomy.Horizon(date, observer, moonEq.ra, moonEq.dec, 'normal');
-        plotAstroBody("MAAN", moonHor, "#e0e0e0", 4, radius, headingDeg);
-        if(updateDom && document.getElementById('posMoon')) document.getElementById('posMoon').innerText = `Az: ${moonHor.azimuth.toFixed(1)}° | Alt: ${moonHor.altitude.toFixed(1)}°`;
-        
-        const vegaHor = Astronomy.Horizon(date, observer, STARS.vega.ra, STARS.vega.dec, 'normal');
-        plotAstroBody(STARS.vega.name, vegaHor, STARS.vega.color, STARS.vega.size, radius, headingDeg);
-        if(updateDom && document.getElementById('posVega')) document.getElementById('posVega').innerText = `Az: ${vegaHor.azimuth.toFixed(1)}° | Alt: ${vegaHor.altitude.toFixed(1)}°`;
-        
-        const denebHor = Astronomy.Horizon(date, observer, STARS.deneb.ra, STARS.deneb.dec, 'normal');
-        plotAstroBody(STARS.deneb.name, denebHor, STARS.deneb.color, STARS.deneb.size, radius, headingDeg);
-        if(updateDom && document.getElementById('posDeneb')) document.getElementById('posDeneb').innerText = `Az: ${denebHor.azimuth.toFixed(1)}° | Alt: ${denebHor.altitude.toFixed(1)}°`;
-        
-        aCtx.restore();
-    }
-
-    // --- 6. WEBGL SHADER ---
-    const gl = document.getElementById('glCanvas').getContext('webgl');
-    const compile = (t, s) => { let sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); return sh; };
-    const prog = gl.createProgram();
-    gl.attachShader(prog, compile(gl.VERTEX_SHADER, document.getElementById('vertexShader').textContent));
-    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, document.getElementById('fragmentShader').textContent));
-    gl.linkProgram(prog); gl.useProgram(prog);
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]), gl.STATIC_DRAW);
-    const pLoc = gl.getAttribLocation(prog, "position"); gl.enableVertexAttribArray(pLoc);
-    gl.vertexAttribPointer(pLoc, 2, gl.FLOAT, false, 0, 0);
-    
-    let headingRad = 0; let headingDeg = 0;
-    const uTime = gl.getUniformLocation(prog, "u_time"), uMode = gl.getUniformLocation(prog, "u_mode");
-    const uMirror = gl.getUniformLocation(prog, "u_mirror"), uPolar = gl.getUniformLocation(prog, "u_polar");
-    const uHeading = gl.getUniformLocation(prog, "u_heading");
-    const uQuat = gl.getUniformLocation(prog, "u_quat");
-    
-    function render() {
-        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        gl.uniform1f(uTime, performance.now()/1000); gl.uniform1i(uMode, shaderMode);
-        gl.uniform1f(uMirror, mState); gl.uniform1f(uPolar, pState);
-        gl.uniform1f(uHeading, headingRad);
-        
-        gl.uniform4f(uQuat, qState.x, qState.y, qState.z, qState.w);
-        
-        if (shaderMode !== 9) { // WebGL
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
-        }
-        drawAstroEngine(headingDeg);
-        requestAnimationFrame(render);
-    }
-    render();
-    
-    // --- PLOTLY 3D GLOBE ENGINE ---
-    let plotlyLon = 0;
-    let plotlyLat = 20;
-    let isPlotlyAutoSpinning = true;
-
-    function renderPlotlyGlobe() {
-        const data = [{
-            type: 'scattergeo',
-            mode: 'markers+lines+text',
-            lon: [-1.8262, 4.276, 5.2285, 4.0942], // Stonehenge, SABIC, Laren, Westkerke
-            lat: [51.1789, 51.481, 52.2562, 51.5364],
-            text: ['STONEHENGE', 'SABIC', 'LAREN', 'WESTKERKE (46035)'],
-            textposition: 'top center',
-            textfont: { color: 'var(--laser-cyan)', family: 'monospace', size: 10 },
-            marker: { size: 8, color: '#00ff41', line: {width: 2, color: '#ff00ff'} },
-            line: { width: 1, color: '#00e5ff', dash: 'dot' }
-        }];
-
-        const layout = {
-            geo: {
-                projection: { type: 'orthographic', rotation: { lon: plotlyLon, lat: plotlyLat } },
-                showocean: true, oceancolor: 'rgba(5, 5, 8, 0.95)',
-                showland: true, landcolor: '#0a0a0a',
-                showlakes: true, lakecolor: 'rgba(5, 5, 8, 0.95)',
-                showcountries: true, countrycolor: '#1a2a3a',
-                countrywidth: 0.5,
-                bgcolor: 'transparent'
-            },
-            paper_bgcolor: 'transparent',
-            plot_bgcolor: 'transparent',
-            margin: { l: 0, r: 0, t: 0, b: 0 },
-            showlegend: false
-        };
-
-        Plotly.newPlot('plotlyCanvas', data, layout, {displayModeBar: false, responsive: true});
-        
-        if(window.plotlySpinInterval) clearInterval(window.plotlySpinInterval);
-        window.plotlySpinInterval = setInterval(() => {
-            if(document.getElementById('plotlyCanvas').style.display === 'block') {
-                if (isPlotlyAutoSpinning) {
-                    plotlyLon += 0.5;
-                    Plotly.relayout('plotlyCanvas', { 'geo.projection.rotation.lon': plotlyLon });
+                // Initialize Audio Context
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 }
-            }
-        }, 50);
-    }
-    
-    // Functie om Plotly camera te updaten obv sensoren
-    function syncPlotlyCamera() {
-        if(shaderMode === 9 && document.getElementById('plotlyCanvas').style.display === 'block') {
-            isPlotlyAutoSpinning = false;
-            // Map Beta (tilt voor/achter) naar Latitude en Alpha/Gamma naar Longitude
-            let newLat = Math.max(-90, Math.min(90, eulerState.beta)); 
-            let newLon = (-eulerState.alpha - eulerState.gamma) % 360;
-            
-            Plotly.relayout('plotlyCanvas', { 
-                'geo.projection.rotation.lon': newLon,
-                'geo.projection.rotation.lat': newLat
-            });
-        }
-    }
-    
-    // Roteer Globe naar een specifiek doel wanneer geplot via commando's
-    function focusGlobeTarget(lat, lon) {
-        if(document.getElementById('plotlyCanvas').style.display === 'block') {
-            isPlotlyAutoSpinning = false;
-            Plotly.relayout('plotlyCanvas', { 
-                'geo.projection.rotation.lon': lon,
-                'geo.projection.rotation.lat': lat
-            });
-        }
-    }
 
-    // --- 7. AES CRYPTO ENGINE & P2P FILE TRANSFER ---
-    let cryptoMode = '';
-    async function deriveKey(password, salt) {
-        const enc = new TextEncoder();
-        const keyMaterial = await window.crypto.subtle.importKey("raw", enc.encode(password), {name: "PBKDF2"}, false, ["deriveKey"]);
-        return window.crypto.subtle.deriveKey({ name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" }, keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-    }
-    
-    function triggerCrypto(mode) {
-        const pwd = document.getElementById('cryptoPassword').value;
-        if(!pwd) { log("[SEC] Voer eerst een AES wachtwoord in.", "err"); return; }
-        cryptoMode = mode; document.getElementById('cryptoFileInput').click();
-    }
-    
-    document.getElementById('cryptoFileInput').addEventListener('change', async (e) => {
-        const file = e.target.files[0]; if(!file) return;
-        const pwd = document.getElementById('cryptoPassword').value;
-        if (cryptoMode === 'encrypt') {
-            try {
-                const buffer = await file.arrayBuffer(); const salt = window.crypto.getRandomValues(new Uint8Array(16)); const iv = window.crypto.getRandomValues(new Uint8Array(12));
-                const key = await deriveKey(pwd, salt); const encrypted = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, buffer);
-                const out = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
-                out.set(salt, 0); out.set(iv, salt.length); out.set(new Uint8Array(encrypted), salt.length + iv.length);
-                const blob = new Blob([out], { type: 'application/octet-stream' });
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name.replace(/\.[^/.]+$/, "") + '_encrypted.dat'; a.click();
-                log("[CRYPTO] Lokaal Encryptie geslaagd.", "ok");
-            } catch(err) { log("[ERR] Encryptie gefaald.", "err"); }
-        } else if (cryptoMode === 'decrypt') {
-            try {
-                const buffer = await file.arrayBuffer(); const data = new Uint8Array(buffer);
-                const salt = data.slice(0, 16); const iv = data.slice(16, 28); const encrypted = data.slice(28);
-                const key = await deriveKey(pwd, salt); const decrypted = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, encrypted);
-                const blob = new Blob([decrypted], { type: 'application/octet-stream' }); 
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name.replace('.dat', '') + '_decrypted'; a.click();
-                log("[CRYPTO] Lokaal Decryptie geslaagd.", "ok");
-            } catch (err) { log("[ERR] Fout wachtwoord of corrupt bestand.", "err"); }
-        }
-        e.target.value = '';
-    });
-
-    document.getElementById('p2pFileInput').addEventListener('change', async (e) => {
-        const file = e.target.files[0]; 
-        if(!file) return;
-        e.target.value = ''; 
-
-        if (!isP2P || !dataConn || !dataConn.open) {
-            log("[ERR] Geen actieve P2P tunnel! Verbind eerst met een Node.", "err");
-            return;
-        }
-
-        const pwd = document.getElementById('cryptoPassword').value;
-        if (!pwd) {
-            log("[SEC] Voer een AES wachtwoord in de kluis in om de datatransfer te beveiligen.", "err");
-            return;
-        }
-
-        log(`[SEC] Bestand ${file.name} aan het versleutelen voor transmissie...`, "sys");
-
-        try {
-            const buffer = await file.arrayBuffer();
-            const salt = window.crypto.getRandomValues(new Uint8Array(16));
-            const iv = window.crypto.getRandomValues(new Uint8Array(12));
-            const key = await deriveKey(pwd, salt);
-            
-            const encrypted = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, buffer);
-
-            dataConn.send({
-                type: 'SECURE_FILE',
-                filename: file.name,
-                filetype: file.type || 'application/octet-stream',
-                salt: Array.from(salt), 
-                iv: Array.from(iv),
-                payload: encrypted
-            });
-
-            log(`[P2P] Bestand ${file.name} End-to-End Encrypted verstuurd via de Nexus.`, "ok");
-        } catch (err) {
-            log(`[ERR] Fout tijdens cryptografie of transmissie: ${err.message}`, "err");
-        }
-    });
-
-    // --- 8. SENSORNET, COMPASS SYNC & OMNI-TRANSFORM ---
-    let streamActive = false;
-    let lastSyncTime = 0;
-    
-    function triggerStateSync() {
-        if(isP2P && dataConn && dataConn.open && !isRemoteSync) {
-            let now = performance.now();
-            if(now - lastSyncTime > 66) {
-                dataConn.send(JSON.stringify({ type: 'SYNC_STATE', payload: getSystemState() }));
-                lastSyncTime = now;
-            }
-        }
-    }
-    
-    function updateTransformUI() {
-        const compassDial = document.getElementById('compassDial');
-        const compassHeadingText = document.getElementById('compassHeading');
-        const compassContainer = document.getElementById('compassContainer');
-        
-        const mapLayer = document.getElementById('mapWrapper');
-        const camLayer = document.getElementById('sensorCam');
-        const astroLayer = document.getElementById('astroCanvas');
-        const plotlyLayer = document.getElementById('plotlyCanvas');
-        
-        let scaleX = mState ? -1 : 1;
-        let scaleY = pState ? -1 : 1;
-        
-        let totalMapRot = (pState ? 180 : 0) + (rotate180 ? 180 : 0);
-        let astroRot = rotate180 ? 180 : 0;
-        
-        let polarFilter = pState ? 'invert(1) hue-rotate(180deg) drop-shadow(0 0 10px #ff00ff)' : 'none';
-        let camFilter = pState ? 'invert(1) grayscale(1) sepia(1) hue-rotate(-50deg) contrast(1.5) brightness(0.8)' : 'grayscale(1) sepia(1) hue-rotate(130deg) contrast(1.5) brightness(0.8)';
-        
-        if(compassDial) compassDial.style.transform = `scale(${scaleX}, ${scaleY}) rotate(${-headingDeg + totalMapRot}deg)`;
-        if(compassHeadingText) compassHeadingText.innerText = `${Math.round(headingDeg)}°`;
-        document.getElementById('st-head').innerText = `${Math.round(headingDeg)}°`;
-        
-        if(compassContainer) {
-            compassContainer.style.filter = polarFilter;
-            compassContainer.style.borderColor = pState ? 'var(--droste-purple)' : 'var(--matrix-green)';
-        }
-        
-        if(mapLayer) {
-            mapLayer.style.transform = `scaleX(${scaleX}) rotate(${totalMapRot}deg)`;
-            mapLayer.style.filter = pState ? 'invert(0.9) hue-rotate(180deg)' : 'none';
-        }
-        
-        if(camLayer) {
-            camLayer.style.transform = `scaleX(${scaleX})`;
-            camLayer.style.filter = camFilter;
-        }
-        
-        if(astroLayer) {
-            astroLayer.style.transform = `scale(${scaleX}, ${scaleY}) rotate(${astroRot}deg)`;
-            astroLayer.style.filter = pState ? 'hue-rotate(90deg)' : 'none';
-        }
-        
-        if(plotlyLayer) {
-            plotlyLayer.style.transform = `scale(${scaleX}, ${scaleY})`;
-            plotlyLayer.style.filter = pState ? 'invert(0.9) hue-rotate(180deg)' : 'none';
-        }
-    }
-    
-    function handleOrientation(e) {
-        if (e.alpha === null && e.beta === null && e.gamma === null) {
-            return;
-        }
-
-        eulerState.alpha = e.alpha || 0;
-        eulerState.beta = e.beta || 0;
-        eulerState.gamma = e.gamma || 0;
-        
-        const degToRad = Math.PI / 180;
-        const x = eulerState.beta * degToRad;
-        const y = eulerState.gamma * degToRad;
-        const z = eulerState.alpha * degToRad;
-        
-        const cx = Math.cos(x/2), cy = Math.cos(y/2), cz = Math.cos(z/2);
-        const sx = Math.sin(x/2), sy = Math.sin(y/2), sz = Math.sin(z/2);
-        
-        qState.w = cx * cy * cz - sx * sy * sz;
-        qState.x = sx * cy * cz - cx * sy * sz;
-        qState.y = cx * sy * cz + sx * cy * sz;
-        qState.z = cx * cy * sz + sx * sy * cz;
-        
-        if(document.getElementById('st-quat')) {
-            document.getElementById('st-quat').innerText = `[${qState.x.toFixed(2)}, ${qState.y.toFixed(2)}, ${qState.z.toFixed(2)}, ${qState.w.toFixed(2)}]`;
-        }
-        
-        headingDeg = e.webkitCompassHeading ? e.webkitCompassHeading : (360 - eulerState.alpha);
-        headingRad = headingDeg * (Math.PI / 180);
-        
-        updateTransformUI();
-        syncPlotlyCamera(); 
-        triggerStateSync();
-    }
-    
-    async function initSensors() {
-        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-            try { 
-                 const perm = await DeviceOrientationEvent.requestPermission(); 
-                 if (perm === 'granted') {
-                    window.addEventListener('deviceorientation', handleOrientation, true);
-                    log("Sensoren & Quaternion Matrix gekoppeld.", "ok");
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
                 }
-            } catch(e) { log("Kompas toegang geweigerd.", "err"); }
-        } else {
-            window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-            window.addEventListener('deviceorientation', handleOrientation, true);
-        }
-        const vid = document.getElementById('sensorCam');
-        if(!streamActive) {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                log("[SEC] Camera toegang geweigerd! Het systeem vereist een HTTPS of Localhost verbinding.", "err");
-                return;
-            }
-            
-            try { 
-                 let stream; 
-                 try { 
-                     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } }); 
-                 } catch(err) { 
-                     log("Specifieke camera niet gevonden. Fallback actief...", "sys", false); 
-                     stream = await navigator.mediaDevices.getUserMedia({ video: true }); 
-                 } 
-                 vid.srcObject = stream; 
-                 vid.style.display = 'block'; 
-                 streamActive = true; 
-                 
-                 executeCoreCommand('astro engine on', true); 
-                 log("AR Camera Actief.", "ok"); 
-             } catch(e) { 
-                  log(`Camera Error: ${e.name} - ${e.message}`, "err"); 
-              }
-        } else { 
-             if(vid.srcObject) { 
-                 vid.srcObject.getTracks().forEach(t => t.stop()); 
-              }
-             vid.style.display = 'none'; 
-             streamActive = false; 
-             executeCoreCommand('astro engine off', true); 
-             log("AR Camera Gedeactiveerd.", "sys");
-        }
-    }
 
-    // --- 9. STATE SYNC & CLI ---
-    function getSystemState() { return { lat: map.getCenter().lat, lng: map.getCenter().lng, zoom: map.getZoom(), shaderMode: shaderMode, mirror: mState, polar: pState, astro: astroActive, heading: headingRad, rotate180: rotate180, quat: qState, euler: eulerState }; }
-    function applySystemState(s) {
-        isRemoteSync = true;
-        map.setView([s.lat, s.lng], s.zoom, {animate: false});
-        shaderMode = s.shaderMode; mState = s.mirror; pState = s.polar; astroActive = s.astro; headingRad = s.heading;
-        
-        rotate180 = s.rotate180 || false;
-        document.getElementById('btnRotate').innerText = `KAART ROTATIE: ${rotate180 ? '180°' : '0°'}`;
-        document.getElementById('btnRotate').style.color = rotate180 ? 'var(--alert-red)' : 'var(--laser-cyan)';
-        
-        if(s.euler) eulerState = s.euler;
-        if(s.quat) {
-            qState = s.quat;
-            document.getElementById('st-quat').innerText = `[${qState.x.toFixed(2)}, ${qState.y.toFixed(2)}, ${qState.z.toFixed(2)}, ${qState.w.toFixed(2)}]`;
-        }
-        
-        document.getElementById('st-mir').innerText = mState ? "ACTIVE" : "OFF"; document.getElementById('st-mir').style.color = mState ? "var(--droste-purple)" : "#666";
-        document.getElementById('st-pol').innerText = pState ? "ACTIVE" : "OFF"; document.getElementById('st-pol').style.color = pState ? "var(--droste-purple)" : "#666";
-        
-        document.getElementById('astroInfoPanel').style.display = astroActive ? 'block' : 'none';
-        document.getElementById('astroCanvas').style.display = astroActive ? 'block' : 'none';
-        
-        // Sync Plotly visibility & remote camera position
-        if(shaderMode === 9) {
-            document.getElementById('glCanvas').style.display = 'none';
-            document.getElementById('plotlyCanvas').style.display = 'block';
-            if(document.getElementById('plotlyCanvas').children.length === 0) renderPlotlyGlobe();
-            syncPlotlyCamera(); 
-        } else {
-            document.getElementById('plotlyCanvas').style.display = 'none';
-            document.getElementById('glCanvas').style.display = 'block';
-        }
-        
-        updateTransformUI();
-        setTimeout(() => { isRemoteSync = false; }, 50);
-    }
-    
-    function toggleViewportMax(max) { 
-         document.body.classList.toggle('viewport-maximized', max); 
-         setTimeout(() => map.invalidateSize(), 400); 
-     }
-    
-    function executeCoreCommand(cmdRaw, fromPeer = false) {
-        let cmd = cmdRaw.toLowerCase().trim();
-        if (cmd === 'help') {
-            log("--- VORTEX OS OMNI-COMMANDS ---", "sys", false);
-            log("> SENSORNET: start sensornet, quaternion info, simuleer sensoren, stop simulatie", "cmd", false);
-            log("> MAPS: gis init, gis topo, gis sat, gis infra, rotate 180", "cmd", false);
-            log("> PLOT: plot sabic, plot laren, plot stonehenge, plot westkerke", "cmd", false);
-            log("> SHADER: view [lidar/cyclone/resonantie/globe]", "cmd", false);
-            log("> SENSORS: astro engine [on/off], mirror all, polarflip all", "cmd", false);
-            log("> CRYPTO: encrypt pdf, decrypt pdf", "cmd", false);
-            log("> SYSTEM: connect p2p, fullscreen on/off, clear", "cmd", false);
-            return;
-        }
-        
-        if(!fromPeer && isP2P && dataConn && dataConn.open && !cmd.includes('pdf') && !cmd.includes('geojson') && !cmd.includes('sensor') && cmd !== 'connect p2p') {
-            dataConn.send(JSON.stringify({ type: 'CMD', cmd: cmd }));
-        }
-        
-        // Aliases
-        if (['minor', 'mirror'].includes(cmd)) cmd = 'mirror all';
-        if (['pollarflip', 'polarflip'].includes(cmd)) cmd = 'polarflip all';
-        if (cmd === 'astro engine') cmd = astroActive ? 'astro engine off' : 'astro engine on';
-        if (cmd === 'import kaartproviders') cmd = 'gis init';
-        
-        // Executie
-        if (cmd === 'view lidar') { shaderMode = 1; document.getElementById('z-label').innerText = "Z-DOMAIN: LIDAR"; document.getElementById('plotlyCanvas').style.display = 'none'; document.getElementById('glCanvas').style.display = 'block'; }
-        else if (cmd === 'view cyclone') { shaderMode = 3; document.getElementById('z-label').innerText = "Z-DOMAIN: CYCLONES"; document.getElementById('plotlyCanvas').style.display = 'none'; document.getElementById('glCanvas').style.display = 'block'; }
-        else if (cmd === 'view resonantie') { shaderMode = 6; document.getElementById('z-label').innerText = "Z-DOMAIN: RESONANCE"; document.getElementById('plotlyCanvas').style.display = 'none'; document.getElementById('glCanvas').style.display = 'block'; }
-        else if (cmd === 'view globe') { 
-            shaderMode = 9; 
-            document.getElementById('z-label').innerText = "Z-DOMAIN: PLOTLY 3D GLOBE"; 
-            document.getElementById('glCanvas').style.display = 'none'; 
-            document.getElementById('plotlyCanvas').style.display = 'block'; 
-            isPlotlyAutoSpinning = true; 
-            if(document.getElementById('plotlyCanvas').children.length === 0) renderPlotlyGlobe();
-            log("3D Hologram Globe geactiveerd.", "data"); 
-        }
-        else if (cmd === 'start sensornet' || cmd === 'enable sensors') { initSensors(); }
-        else if (cmd === 'quaternion info') { log(`[QUAT MATRIX] X:${qState.x.toFixed(3)} | Y:${qState.y.toFixed(3)} | Z:${qState.z.toFixed(3)} | W:${qState.w.toFixed(3)}`, "math"); }
-        
-        else if (cmd === 'simuleer sensoren') {
-            log("Virtuele Sensor-Matrix geactiveerd. Simulatie draait...", "math");
-            if(window.simInterval) clearInterval(window.simInterval);
-            window.simInterval = setInterval(() => {
-                let t = performance.now() / 2000;
-                handleOrientation({ 
-                    alpha: (t * 20) % 360, 
-                    beta: Math.sin(t) * 45, 
-                    gamma: Math.cos(t) * 45 
-                });
-            }, 50);
-        }
-        else if (cmd === 'stop simulatie') {
-            if(window.simInterval) clearInterval(window.simInterval);
-            isPlotlyAutoSpinning = true; 
-            log("Virtuele Sensor-Matrix gestopt.", "sys");
-        }
-
-        else if (cmd === 'encrypt pdf') { triggerCrypto('encrypt'); }
-        else if (cmd === 'decrypt pdf') { triggerCrypto('decrypt'); }
-        else if (cmd === 'import geojson') { document.getElementById('geoJsonInput').click(); }
-        else if (cmd === 'export geojson') { exportGeoJSON(); }
-        else if (cmd === 'mirror all') { mState = mState ? 0 : 1; document.getElementById('st-mir').innerText = mState ? "ACTIVE" : "OFF"; document.getElementById('st-mir').style.color = mState ? "var(--droste-purple)" : "#666"; log("Mirror X geactiveerd.", "sys"); }
-        else if (cmd === 'polarflip all') { pState = pState ? 0 : 1; document.getElementById('st-pol').innerText = pState ? "ACTIVE" : "OFF"; document.getElementById('st-pol').style.color = pState ? "var(--droste-purple)" : "#666"; log("Polar Inversie geactiveerd.", "sys"); }
-        
-        else if (cmd === 'rotate 180') {
-            rotate180 = !rotate180;
-            let btn = document.getElementById('btnRotate');
-            btn.innerText = `KAART ROTATIE: ${rotate180 ? '180°' : '0°'}`;
-            btn.style.color = rotate180 ? 'var(--alert-red)' : 'var(--laser-cyan)';
-            btn.style.borderColor = rotate180 ? 'var(--alert-red)' : 'var(--laser-cyan)';
-            log(`Kaart geroteerd naar ${rotate180 ? 'Zuid-boven (180°)' : 'Noord-boven (0°)'}.`, "sys");
-        }
-        
-        else if (cmd === 'plot sabic') { 
-            map.flyTo([51.481, 4.276], 14); 
-            focusGlobeTarget(51.481, 4.276);
-            setTimeout(() => { L.circle([51.481, 4.276], {radius: 800, color: 'red'}).addTo(targetLayer).bindPopup("SABIC PFBS").openPopup(); log("SABIC geplot.", "data"); }, 1000); 
-        }
-        else if (cmd === 'plot laren') {
-            log("Uplink met OSM Nexus... Relatie 419187 (Laren) ophalen.", "sys");
-            fetch('https://nominatim.openstreetmap.org/lookup?osm_ids=R419187&format=geojson&polygon_geojson=1')
-                .then(res => res.json())
-                .then(data => {
-                    const larenLayer = L.geoJSON(data, {
-                        style: { color: 'var(--laser-cyan)', weight: 2, fillColor: 'var(--sirius-blue)', fillOpacity: 0.15, dashArray: '5, 5' }
-                    }).addTo(targetLayer);
-                    const bounds = larenLayer.getBounds();
-                    map.flyToBounds(bounds, { padding: [20, 20], duration: 1.5 });
-                    const center = bounds.getCenter();
-                    focusGlobeTarget(center.lat, center.lng);
-                    log("GIS: Laren (Noord-Holland) boundary geplot.", "ok");
-                })
-                .catch(err => { log("API Interceptie mislukt. Geen data ontvangen.", "err"); });
-        }
-        else if (cmd === 'plot stonehenge') { 
-            map.flyTo([51.1789, -1.8262], 16); 
-            focusGlobeTarget(51.1789, -1.8262);
-            setTimeout(() => { 
-                L.circle([51.1789, -1.8262], {radius: 120, color: 'var(--droste-purple)'}).addTo(targetLayer).bindPopup("STONEHENGE NEXUS").openPopup(); 
-                log("Stonehenge (UK) geplot.", "data"); 
-            }, 1000); 
-        }
-        else if (cmd === 'plot westkerke') { 
-            map.flyTo([51.5364, 4.0942], 16); 
-            focusGlobeTarget(51.5364, 4.0942);
-            setTimeout(() => { 
-                L.circle([51.5364, 4.0942], {radius: 60, color: 'var(--matrix-green)'}).addTo(targetLayer).bindPopup("WESTKERKE TERP (46035)").openPopup(); 
-                log("Westkerke Terp (Rijksmonument 46035) geplot.", "data"); 
-            }, 1000); 
-        }
-        
-        else if (cmd.startsWith('gis ')) {
-            const subcmd = cmd.split(' ')[1];
-            if (!layerControl) {
-                layerControl = L.control.layers({"Vortex Dark": baseTile}, null, {position:'topright'}).addTo(map);
-            }
-            
-            if (subcmd === 'init') {
-                const gSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}');
-                const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
-                const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png');
-                const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-                const infra = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png');
+                // Setup Oscillator and Gain
+                osc = audioCtx.createOscillator();
+                gainNode = audioCtx.createGain();
                 
-                layerControl.addBaseLayer(osm, "OSM Basis");
-                layerControl.addBaseLayer(topo, "OpenTopoMap");
-                layerControl.addBaseLayer(esriSat, "Esri Satelliet");
-                layerControl.addBaseLayer(gSat, "Google Satelliet");
-                layerControl.addOverlay(infra, "Spoor & Infra");
-                log("GIS Matrix volledig geladen in control-paneel.", "ok");
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(432, audioCtx.currentTime);
+                
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                osc.start();
+
+                active = true;
+                document.getElementById('sys-status').innerText = "RUNNING";
+                document.getElementById('bootBtn').style.opacity = "0.5";
+                document.getElementById('bootBtn').innerText = "SYSTEM ACTIVE";
+                document.getElementById('bootBtn').disabled = true;
+
+                log("Audio Engine 432Hz Online.");
+                log("P2P Handshake: OK.");
+                
+                render();
+            } catch (e) {
+                log("ERROR: Audio activatie mislukt. " + e);
             }
-            else if (subcmd === 'topo') {
-                const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png').addTo(map);
-                layerControl.addBaseLayer(topo, "GIS Topografie");
-                log("GIS Topografische laag actief.", "data");
-            } 
-            else if (subcmd === 'sat') {
-                const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
-                layerControl.addBaseLayer(sat, "GIS Satelliet (Esri)");
-                log("GIS Satelliet laag actief.", "data");
-            } 
-            else if (subcmd === 'infra') {
-                const infra = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png').addTo(map);
-                layerControl.addOverlay(infra, "GIS Spoor/Infra");
-                log("GIS Infrastructuur overlay actief.", "data");
+        }
+
+        function render() {
+            const cx = 120, cy = 120;
+            ctx.clearRect(0, 0, 240, 240);
+            
+            // Draw Radar Grids
+            ctx.strokeStyle = '#0a1f24';
+            ctx.lineWidth = 1;
+            for(let r = 30; r < 120; r += 30) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            angle += 0.04;
+            const deg = Math.floor((angle * 180 / Math.PI) % 360);
+            document.getElementById('deg-val').innerText = deg + "°";
+
+            // Draw Sweep
+            ctx.fillStyle = 'rgba(0, 255, 204, 0.15)';
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, 120, angle, angle + 0.4);
+            ctx.fill();
+
+            // Sirius Sync (108°) Window Logic
+            if(deg >= 105 && deg <= 112) {
+                if(!beker.classList.contains('vibration')) {
+                    beker.classList.add('vibration');
+                    // Fade in sound to avoid clicks
+                    if(gainNode) gainNode.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.05);
+                    
+                    document.getElementById('heb-out').style.display = 'block';
+                    document.getElementById('sync-label').innerText = "SYNCED";
+                    document.getElementById('sync-label').style.color = "#00ff00";
+                    document.getElementById('osc-stat').innerText = "ON";
+                    document.getElementById('osc-stat').style.color = "#00ff00";
+                    document.getElementById('freq-val').innerText = "432 Hz";
+                    
+                    qr.src = "https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=SIRIUS_DECRYPTED_432HZ_19_7";
+                    log("SYNC DETECTED: Sirius 108°. Resonantie geactiveerd.");
+                }
             } else {
-                log("Onbekend GIS commando.", "err");
+                if(beker.classList.contains('vibration')) {
+                    beker.classList.remove('vibration');
+                    // Fade out sound
+                    if(gainNode) gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+                    
+                    document.getElementById('heb-out').style.display = 'none';
+                    document.getElementById('sync-label').innerText = "LOCKED";
+                    document.getElementById('sync-label').style.color = "red";
+                    document.getElementById('osc-stat').innerText = "OFF";
+                    document.getElementById('osc-stat').style.color = "red";
+                    document.getElementById('freq-val').innerText = "0 Hz";
+                    
+                    qr.src = "https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=LOCKED";
+                }
             }
+            requestAnimationFrame(render);
         }
-        else if (cmd === 'astro engine on') { 
-             astroActive = true; 
-             document.getElementById('astroCanvas').style.display = 'block'; 
-             document.getElementById('astroInfoPanel').style.display = 'flex'; 
-             log("Astro Engine & Multi-Body Tracking Actief.", "math"); 
-         }
-        else if (cmd === 'astro engine off') { 
-             astroActive = false; 
-             document.getElementById('astroCanvas').style.display = 'none'; 
-             document.getElementById('astroInfoPanel').style.display = 'none'; 
-             log("Astro Inactief.", "math"); 
-         }
-        else if (cmd === 'connect p2p') { connectToPeerJS(); }
-        else if (cmd === 'fullscreen on') { toggleViewportMax(true); }
-        else if (cmd === 'fullscreen off') { toggleViewportMax(false); }
-        else if (cmd === 'clear') {
-            targetLayer.clearLayers(); shaderMode = 0; document.getElementById('z-label').innerText = "Z-DOMAIN: STRATIGRAPHIE";
-            mState = 0; pState = 0; rotate180 = false;
-            
-            document.getElementById('btnRotate').innerText = "KAART ROTATIE: 0°";
-            document.getElementById('btnRotate').style.color = "var(--laser-cyan)";
-            document.getElementById('btnRotate').style.borderColor = "var(--laser-cyan)";
-            
-            document.getElementById('plotlyCanvas').style.display = 'none';
-            document.getElementById('glCanvas').style.display = 'block';
-            
-            if(window.simInterval) clearInterval(window.simInterval);
-            isPlotlyAutoSpinning = true;
-            
-            executeCoreCommand('astro engine off', true);
-            document.getElementById('st-mir').innerText="OFF"; document.getElementById('st-pol').innerText="OFF";
-            document.getElementById('st-mir').style.color="#666"; document.getElementById('st-pol').style.color="#666";
-            log("Systeem gereinigd.", "sys");
-        }
-        else if(!fromPeer && cmd !== "") { log(`Commando onbekend. Typ 'help'.`, 'err', false); }
-        
-        updateTransformUI();
-        triggerStateSync();
-    }
-    
-    function processCommand(input) { if(!input) return; log(`vtx@mobile:~# ${input}`, 'cmd', true); executeCoreCommand(input, false); }
-    document.getElementById('cliInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') { processCommand(e.target.value); e.target.value = ''; } });
-    
-    // BOOT
-    log(`VORTEX Mobile v15.6 Opgestart.`, 'ok', false);
-    setTimeout(() => { executeCoreCommand('help'); }, 500);
-</script>
+    </script>
 </body>
 </html>
