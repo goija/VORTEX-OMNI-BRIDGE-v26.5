@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VORTEX v26.0 // OMNI-NEXUS MASTER DIRECTORY</title>
+    <title>VORTEX v26.5 // OMNI-NEXUS MASTER DIRECTORY</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         :root {
             /* VORTEX THEME COLORS */
-            --bg-color: transparent; /* Aangepast voor naadloze bridge integratie */
+            --bg-color: transparent; 
             --grid-color: #0a1f24;
             --text-main: #00ffcc;
             --text-accent: #ff9900;
@@ -126,8 +126,9 @@
 
         /* --- MODULE SPECIFIEKE CSS OVERLAYS --- */
         
-        /* 6D B(6) MATRIX */
-        #matrix-grid { grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 1.5%; border: 1px solid var(--text-muted);}
+        /* 6D B(6) MATRIX & TESSERACT */
+        #matrix-grid, #tesseract-grid { grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 1.5%; border: 1px solid var(--text-muted);}
+        #tesseract-grid { border-color: var(--text-accent); }
         .matrix-cell { background: rgba(0, 255, 204, 0.05); border: 1px solid rgba(0, 255, 204, 0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.2s; cursor: crosshair;}
         .m-bin { font-weight: bold; font-size: clamp(0.5rem, 1.5vw, 1rem); color: var(--text-muted); }
         .m-dec { font-size: clamp(0.4rem, 1vw, 0.7rem); color: rgba(255,255,255,0.3); margin-top: 2px; }
@@ -252,11 +253,11 @@
                         
                         <li class="domain-group"><span class="caret">Domein 8: Cryptografie</span>
                             <ul class="nested hidden">
-                                <li class="node" onclick="loadModule('els_hebrew')" style="color: var(--color-terracotta);">├─ Tora ELS [3485^7]</li>
+                                <li class="node" onclick="loadModule('els_hebrew')" style="color: var(--color-terracotta);">├─ Tora ELS [586 v.Chr]</li>
                                 <li class="node" onclick="loadModule('vigenere')" style="color: #ff3333;">├─ Vigenère Tabula Recta</li>
                                 <li class="node" onclick="loadModule('pigpen')" style="color: #00ffcc;">├─ Vrijmetselaars Balken</li>
                                 <li class="node" onclick="loadModule('homophonic')" style="color: #ffaa00;">├─ Homofone Substitutie</li>
-                                <li class="node" onclick="loadModule('aes_rijndael')" style="color: var(--color-aes); font-weight:bold; text-shadow: 0 0 5px rgba(52, 152, 219, 0.5);">└─ AES / Rijndael [FIPS 197]</li>
+                                <li class="node" onclick="loadModule('aes_rijndael')" style="color: var(--color-aes);">└─ AES / Rijndael [FIPS 197]</li>
                             </ul>
                         </li>
                         
@@ -275,17 +276,25 @@
                         
                         <li class="domain-group"><span class="caret">Domein 11: OMNI-AI Bridge</span>
                             <ul class="nested hidden">
-                                <li class="node" onclick="loadModule('neural_sync')" style="color: var(--color-ai);">└─ NEURAL-SYNC [v6.1]</li>
+                                <li class="node" onclick="loadModule('neural_sync')" style="color: var(--color-ai);">└─ NEURAL-SYNC [Quaternion 180°]</li>
                             </ul>
                         </li>
+                        
                         <li class="domain-group"><span class="caret">Domein 12: Syntaxis & Codering</span>
                             <ul class="nested hidden">
                                 <li class="node" onclick="loadModule('unicode_matrix')" style="color: var(--color-unicode);">└─ Unicode/ASCII DB</li>
                             </ul>
                         </li>
+                        
                         <li class="domain-group"><span class="caret">Domein 13: Syncretische Cyphers</span>
                             <ul class="nested hidden">
                                 <li class="node" onclick="loadModule('omni_cipher')" style="color: var(--color-omni);">└─ OMNI-CIPHER MASTER</li>
+                            </ul>
+                        </li>
+
+                        <li class="domain-group"><span class="caret">Domein 14: Tesseract</span>
+                            <ul class="nested hidden">
+                                <li class="node" onclick="loadModule('shl_tesseract')" style="color: var(--text-accent); font-weight:bold;">└─ B(6,2) SHL Tesseract [432Hz]</li>
                             </ul>
                         </li>
                     </ul>
@@ -303,14 +312,15 @@
                 <div id="unicode-grid" class="overlay-grid"></div>
                 <div id="omnicipher-grid" class="overlay-grid"></div>
                 <div id="luopan-grid" class="overlay-grid"></div>
+                <div id="tesseract-grid" class="overlay-grid"></div>
                 
                 <div id="aes-grid" class="overlay-grid" style="display: none;">
                     <div class="aes-title">> AES-256 / RIJNDAEL DECRYPTOR</div>
                     <input type="text" id="aes-key" class="aes-key" placeholder="Enter Secret Key (e.g. Vortex123)" autocomplete="off">
                     <textarea id="aes-msg" class="aes-input" placeholder="Type your payload here to encrypt or decrypt..."></textarea>
                     <div class="aes-btn-group">
-                        <button class="aes-btn" onclick="doAesEncrypt()">ENCRYPT</button>
-                        <button class="aes-btn" onclick="doAesDecrypt()">DECRYPT</button>
+                        <button class="aes-btn" style="border-color:var(--color-aes); color:var(--color-aes);" onclick="doAesEncrypt()">ENCRYPT</button>
+                        <button class="aes-btn" style="border-color:var(--color-aes); color:var(--color-aes);" onclick="doAesDecrypt()">DECRYPT</button>
                     </div>
                     <textarea id="aes-res" class="aes-input" placeholder="Output (Ciphertext / Plaintext) will appear here..." readonly></textarea>
                     <div class="aes-state-matrix" id="aes-state-matrix">
@@ -329,7 +339,39 @@
     </div>
 
     <script>
-        // --- 1. MENU LOGICA ---
+        // --- 1. Wiskunde & Quaternions ---
+        const Quat = {
+            mirror180: function(x, y, z) { return { w: 0, x, y, z }; }, 
+            rotate: function(p, q) {
+                const dot = q.x * p.x + q.y * p.y + q.z * p.z;
+                return { x: 2 * dot * q.x - p.x, y: 2 * dot * q.y - p.y, z: 2 * dot * q.z - p.z };
+            }
+        };
+
+        // Globals for mirrors
+        let isMirrorActive = true;
+        let isAstroMirror = false; // For Observatory Tracker
+
+        function toggleMirror() {
+            isMirrorActive = !isMirrorActive;
+            const status = document.getElementById('mirrorStatus');
+            if(status) {
+                status.innerText = isMirrorActive ? "ACTIEF" : "INACTIEF";
+                status.style.color = isMirrorActive ? "#ff9900" : "#555";
+                status.style.textShadow = isMirrorActive ? "0 0 5px rgba(255, 153, 0, 0.5)" : "none";
+            }
+        }
+
+        function toggleAstroMirror() {
+            isAstroMirror = !isAstroMirror;
+            const status = document.getElementById('astroMirrorStatus');
+            if(status) {
+                status.innerText = isAstroMirror ? "ZUID (180° INVERSIE)" : "NOORD (STANDAARD)";
+                status.style.color = isAstroMirror ? "#ff9900" : "#00ffcc";
+            }
+        }
+
+        // --- 2. MENU LOGICA ---
         const menu = document.getElementById('mainMenu');
         const overlay = document.getElementById('menuOverlay');
 
@@ -346,18 +388,56 @@
             });
         }
 
-        // --- 2. DATA KERN ---
+        // --- 3. DATA KERN ---
         const vortexData = {
-            stonehenge: { title: "Stonehenge", desc: "Zonne-anker observatorium.", azimuth: "50.4", grid: "[14, 3]", color: "#00ffcc", type: "polar" },
-            zwolle: { title: "Sint-Michaël Zwolle", desc: "Aartsengel as lijn.", azimuth: "81.5", grid: "[18, 11]", color: "#00ffcc", type: "polar" },
+            stonehenge: { 
+                title: "Stonehenge Observatorium", 
+                desc: "Zonne-anker observatorium. Archeo-astronomische uitlijning op de zomerzonnewende.", 
+                azimuth: "50.4", grid: "[LIVE TRACKER]", color: "#00ffcc", type: "observatory",
+                extendedHTML: `
+                    <div style="margin-top: 20px; border-top: 1px dashed rgba(0, 255, 204, 0.4); padding-top: 15px;">
+                        <div class="data-row"><div class="data-label" style="color:var(--text-main);">LIVE TRACKER:</div><div class="data-value" style="color:#fff;" id="liveTrackerAstro">BEREKENEN...</div></div>
+                        <div class="data-row"><div class="data-label" style="color:var(--text-main);">QUATERNION AS:</div><div class="data-value" id="astroMirrorStatus" style="color:#00ffcc; font-weight:bold;">NOORD (STANDAARD)</div></div>
+                        <button class="aes-btn" style="background:rgba(0,255,204,0.1); border:1px solid #00ffcc; color:#00ffcc; padding:10px; width:100%; margin-top:15px; cursor:pointer;" onclick="toggleAstroMirror()">FLIP POLARITEIT (180° ZUID)</button>
+                    </div>
+                `
+            },
+            zwolle: { 
+                title: "Sint-Michaël Zwolle", 
+                desc: "Aartsengel as lijn. Leylijn tracker voor de St. Michaël observaties.", 
+                azimuth: "81.5", grid: "[LIVE TRACKER]", color: "#00ffcc", type: "observatory",
+                extendedHTML: `
+                    <div style="margin-top: 20px; border-top: 1px dashed rgba(0, 255, 204, 0.4); padding-top: 15px;">
+                        <div class="data-row"><div class="data-label" style="color:var(--text-main);">LIVE TRACKER:</div><div class="data-value" style="color:#fff;" id="liveTrackerAstro">BEREKENEN...</div></div>
+                        <div class="data-row"><div class="data-label" style="color:var(--text-main);">QUATERNION AS:</div><div class="data-value" id="astroMirrorStatus" style="color:#00ffcc; font-weight:bold;">NOORD (STANDAARD)</div></div>
+                        <button class="aes-btn" style="background:rgba(0,255,204,0.1); border:1px solid #00ffcc; color:#00ffcc; padding:10px; width:100%; margin-top:15px; cursor:pointer;" onclick="toggleAstroMirror()">FLIP POLARITEIT (180° ZUID)</button>
+                    </div>
+                `
+            },
             gamuungell: { title: "Hond: Kosmische Sleutel 108°", desc: "As van het Geheugen.", azimuth: "108.0", grid: "[Plato / Pentagoon]", color: "#ff3333", type: "geometry_108",
                 extendedHTML: `<div class="lore-box"><h4>1. Kosmische Cycli</h4><ul><li>Afstand Aarde-Zon = ~108x zon-diameter.</li><li>Precessie Equinox = 25.920 jaar.</li></ul><h4>2. Heilige Geometrie</h4><ul><li>Interne hoek Pentagoon = 108°.</li></ul><h4>3. Spirituele Anatomie</h4><ul><li>108 bewerkbare chakra's.</li><li>108 Japa Mala kralen.</li></ul></div>` },
             leeuw_150: { title: "Leeuw: Tijddomein", desc: "Kamer van Kosmische Orde.", azimuth: "150.0", grid: "[Tijd-Domein]", color: "#ff33aa", type: "timegrid" },
             gulden_as: { title: "Gulden As (Phi)", desc: "Harmonische helling 1:3.", azimuth: "161.6", grid: "[40.4 MOD]", color: "#ffaa00", type: "polar" },
             klokbeker_6d: { title: "Klokbeker 6D Matrix", desc: "B(6) Hyper-Raster projectie.", azimuth: "161.6", grid: "[6D Matrix]", color: "#00ffcc", type: "hypergrid" },
             
-            // CRYPTOGRAFIE DOMEIN
-            els_hebrew: { title: "ELS TORA DECRYPTOR", desc: "Equidistant Letter Sequence gebaseerd op 3485^7.", azimuth: "180.0", grid: "[5x5 Gematria]", color: "#e67e22", type: "elsgrid" },
+            els_hebrew: { 
+                title: "ELS TORA DECRYPTOR [586 v.Chr]", 
+                desc: "Equidistant Letter Sequence (ELS) gebaseerd op een determenistische VORTEX-matrix.", 
+                azimuth: "180.0", grid: "[5x5 Gematria]", color: "#e67e22", type: "elsgrid",
+                extendedHTML: `
+                    <div class="lore-box" style="border-top-color: var(--color-terracotta);">
+                        <h4 style="color: var(--color-terracotta);">Dossier: 19 Juli 586 v.Chr. (9 Av)</h4>
+                        <p style="color:#ddd; font-size:0.8rem; margin-bottom:5px;">Historische ELS-zoektochten naar de verwoesting van de Eerste Tempel stuiten vaak op theologische en wiskundige drempels:</p>
+                        <ul style="color:#aaa; font-size:0.75rem; margin-bottom:10px;">
+                            <li><b>Datum Variabiliteit:</b> 2 Koningen (7e van Av) vs. Jeremia (10e van Av). Risico op <i>data tuning</i>.</li>
+                            <li><b>Tekstuele Corruptie:</b> ELS vereist een 100% foutloze tekst. Oudere manuscripten zoals de Leningrad Codex wijken af van moderne edities.</li>
+                        </ul>
+                        <h4 style="color: var(--color-terracotta);">VORTEX Raffinaderij vs. Bijbel</h4>
+                        <p style="color:#ddd; font-size:0.75rem;">In tegenstelling tot de evoluerende Bijbeltekst, gebruikt VORTEX een gesloten en deterministisch 25-cijferig wiskundig model (gebaseerd op lNum). Dit elimineert variabiliteit en garandeert dat we de beoogde sleutels extracten via een onveranderlijk algoritme.</p>
+                    </div>
+                `
+            },
+            
             vigenere: { title: "VIGENÈRE TABULA RECTA", desc: "Polyalfabetische substitutie, de onkraakbare code uit 1553.", azimuth: "0.0", grid: "[26x26 Matrix]", color: "#ff3333", type: "vigenere", params: {"TYPE": "Polyalfabetisch", "VEILIGHEID": "Klassiek"} },
             pigpen: { title: "VRIJMETSELAARS CIPHER", desc: "De 'Taal van de Balken' (Pigpen). Geometrische substitutie gebruikt door Rozenkruisers.", azimuth: "0.0", grid: "[Geometrisch Raster]", color: "#00ffcc", type: "pigpen", params: {"TYPE": "Monoalfabetisch", "VEILIGHEID": "Zwak / Visueel"} },
             homophonic: { title: "HOMOFONE SUBSTITUTIE", desc: "Eén-naar-veel mapping om frequentie-analyse te dwarsbomen (zoals Zodiac).", azimuth: "0.0", grid: "[N:1 Mapping]", color: "#ffaa00", type: "homophonic", params: {"TYPE": "Homofoon", "VEILIGHEID": "Gemiddeld"} },
@@ -366,12 +446,7 @@
                 extendedHTML: `
                     <div class="lore-box" style="border-top-color: var(--color-aes);">
                         <h4 style="color: var(--color-aes);">NIST FIPS PUB 197</h4>
-                        <p style="color:#ddd; font-size:0.8rem; margin-bottom:5px;">AES is een variant van het Rijndael block cipher, ontwikkeld door Belgische cryptografen Joan Daemen en Vincent Rijmen. Goedgekeurd op 26 nov 2001 als de industriestandaard ter vervanging van DES (1977).</p>
-                        <ul style="color:#aaa;">
-                            <li><b>Symmetrisch:</b> Zelfde sleutel voor enc/dec.</li>
-                            <li><b>Block size:</b> 128 bits.</li>
-                            <li><b>Status:</b> Goedgekeurd door de NSA voor Top Secret data.</li>
-                        </ul>
+                        <p style="color:#ddd; font-size:0.8rem; margin-bottom:5px;">AES is een variant van het Rijndael block cipher, ontwikkeld door Belgische cryptografen Joan Daemen en Vincent Rijmen.</p>
                     </div>
                 `
             },
@@ -379,12 +454,33 @@
             klokbeker_res: { title: "Archeo-Resonator", desc: "Dynamische 3D reconstructie.", azimuth: "161.6", grid: "[Harmonisch Veld]", color: "#d2691e", type: "resonator" },
             hexagram_lookup: { title: "I Tjing Orakel", desc: "6-bit hyperkubus mapping.", azimuth: "180.0", grid: "[8x8 Hexagram]", color: "#ffaa00", type: "hexgrid" },
             luopan_17x17: { title: "LUO PAN MATRIX [17x17]", desc: "Massief 289-cel Feng Shui kompas raster.", azimuth: "180.0", grid: "[17x17 Cosmic Nodes]", color: "#e74c3c", type: "luopangrid" },
-            neural_sync: { title: "NEURAL-SYNC [v6.1]", desc: "Neurale koppeling met OMNI-AI.", azimuth: "360.0", grid: "[Neuraal Netwerk]", color: "#00e5ff", type: "ai_bridge" },
+            
+            neural_sync: { 
+                title: "NEURAL-SYNC [v6.5] QUATERNION", 
+                desc: "Neurale koppeling met OMNI-AI. Uitgerust met non-Euclidische 180° quaternion spiegeling om data-inversie mogelijk te maken.", 
+                azimuth: "360.0", grid: "[Quaternion Matrix]", color: "#00e5ff", type: "ai_bridge",
+                extendedHTML: `
+                    <div style="margin-top: 20px; border-top: 1px dashed rgba(0, 229, 255, 0.4); padding-top: 15px;">
+                        <div class="data-row">
+                            <div class="data-label" style="color:var(--color-ai);">QUATERNION MIRROR:</div>
+                            <div class="data-value" id="mirrorStatus" style="color:#ff9900; font-weight:bold; text-shadow:0 0 5px rgba(255,153,0,0.5);">ACTIEF</div>
+                        </div>
+                        <button class="aes-btn" style="background:rgba(0,229,255,0.1); border:1px solid var(--color-ai); color:var(--color-ai); padding:10px; width:100%; margin-top:15px; cursor:pointer;" onclick="toggleMirror()">SCHAKEL SPIEGEL (AAN/UIT)</button>
+                    </div>
+                `
+            },
+
             unicode_matrix: { title: "UNICODE / ASCII DATABASE", desc: "Wolfram|Alpha karakter encoding matrix.", azimuth: "0.0", grid: "[5x5 Unicode Hex]", color: "#c774ff", type: "unicodegrid" },
-            omni_cipher: { title: "OMNI-CIPHER MASTER", desc: "Syncretische vertaal-matrix. Koppelt Vortex Unicode aan John Dee Alchemie, Maria Stuart Ciphers, Tora ELS en I Tjing Hexagrammen.", azimuth: "360.0", grid: "[8x8 Syncretic Node]", color: "#ffffff", type: "omnigrid" }
+            omni_cipher: { title: "OMNI-CIPHER MASTER", desc: "Syncretische vertaal-matrix. Koppelt Vortex Unicode aan John Dee Alchemie, Maria Stuart Ciphers, Tora ELS en I Tjing Hexagrammen.", azimuth: "360.0", grid: "[8x8 Syncretic Node]", color: "#ffffff", type: "omnigrid" },
+            
+            shl_tesseract: { 
+                title: "B(6,2) SHL TESSERACT", 
+                desc: "Harmonische calculator. Freq = Node &times; 43.2 Hz.<br>Node 10 = 432.0 Hz (Anker / Grondtoon)", 
+                azimuth: "432.0", grid: "[8x8 Matrix]", color: "#ff9900", type: "tesseractgrid" 
+            }
         };
 
-        // --- 3. AUDIO ENGINE ---
+        // --- 4. AUDIO ENGINE ---
         let audioCtx;
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -419,10 +515,118 @@
             osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 3.0);
         }
 
-        // --- 4. HTML MODULE BUILDERS ---
+        // --- 5. HTML MODULE BUILDERS ---
         function toBin(n) { return n.toString(2).padStart(6, '0'); }
         function getHW(n) { let w=0; for(let i=0; i<6; i++) if(n & (1<<i)) w++; return w; }
         function getOrbit(n) { let m=n, c=n; for(let i=0;i<6;i++){ c=((c<<1)|(c>>5))&63; if(c<m) m=c; } return m; }
+
+        // --- TESSERACT GRID (DOMEIN 14) ---
+        const tGrid = document.getElementById('tesseract-grid');
+        let tInit = false;
+        
+        function buildTesseract() {
+            if(tInit) return;
+            for(let i=0; i<64; i++) {
+                let cell = document.createElement('div'); cell.className = 'matrix-cell'; cell.id = `tcell-${i}`;
+                cell.innerHTML = `<div class="m-bin">${toBin(i)}</div><div class="m-dec">N-${i}</div>`;
+                cell.onclick = () => scanTesseract(i, true); cell.onmouseenter = () => { if(window.innerWidth >= 1024) scanTesseract(i, true); };
+                tGrid.appendChild(cell);
+            }
+            tInit = true;
+        }
+
+        function scanTesseract(id, playSound = true) {
+            let freq = (id * 43.2).toFixed(1);
+            
+            for(let j=0; j<64; j++) {
+                document.getElementById(`tcell-${j}`).className = (j===id) ? 'matrix-cell target' : 'matrix-cell faded';
+            }
+            
+            if (playSound && id > 0) {
+                initAudio();
+                if(audioCtx && audioCtx.state === 'running') {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.frequency.value = freq; osc.connect(gain); gain.connect(audioCtx.destination);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+                    osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+                }
+            }
+
+            let sync = "";
+            let borderColor = "var(--text-accent)";
+            if (id === 10) {
+                sync = "<br><span style='color:#00ffcc; text-shadow:0 0 5px #00ffcc; font-size:0.9rem;'>[!] SYNC: 432.0 Hz ANKER (A4)</span>";
+                borderColor = "#00ffcc";
+            } else if (id === 20) {
+                sync = "<br><span style='color:#ff33aa; text-shadow:0 0 5px #ff33aa; font-size:0.9rem;'>[!] SYNC: 864.0 Hz EERSTE OCTAAF (A5)</span>";
+                borderColor = "#ff33aa";
+            }
+
+            let optionsHTML = "";
+            for(let i=0; i<64; i++) {
+                let sel = (i === id) ? "selected" : "";
+                optionsHTML += `<option value="${i}" ${sel} style="background:#111;">Node ${i} [${(i*43.2).toFixed(1)} Hz]</option>`;
+            }
+
+            let ratiosHTML = `
+                <div style="padding-bottom:5px; border-bottom:1px solid rgba(255,153,0,0.3); color:#ff9900;"><b>NODE</b></div>
+                <div style="padding-bottom:5px; border-bottom:1px solid rgba(255,153,0,0.3); color:#ff9900;"><b>FREQ</b></div>
+                <div style="padding-bottom:5px; border-bottom:1px solid rgba(255,153,0,0.3); color:#ff9900;"><b>VERHOUDING</b></div>`;
+            const rLabels = ["Stilte", "1:10", "1:5", "3:10", "2:5", "1:2 (Octaaf van N-1)", "3:5", "7:10", "4:5", "9:10", "1:1 (Anker 432Hz)"];
+            for(let i=1; i<=10; i++) {
+                let cl = (i === id) ? "color:#fff; font-weight:bold; background:rgba(255,153,0,0.2);" : "color:#ccc;";
+                ratiosHTML += `
+                    <div style="${cl} padding:2px;">N-${i}</div>
+                    <div style="${cl} padding:2px;">${(i*43.2).toFixed(1)} Hz</div>
+                    <div style="${cl} padding:2px;">${rLabels[i]}</div>`;
+            }
+
+            let octavesHTML = `
+                <div style="padding-bottom:5px; border-bottom:1px solid rgba(255,153,0,0.3); color:#ff9900;"><b>OCTAAF</b></div>
+                <div style="padding-bottom:5px; border-bottom:1px solid rgba(255,153,0,0.3); color:#ff9900;"><b>FREQUENTIE</b></div>`;
+            let cF = 432;
+            for(let i=0; i<=10; i++) {
+                let cl = (cF == freq) ? "color:#fff; font-weight:bold; background:rgba(255,153,0,0.2);" : "color:#ccc;";
+                let label = `Octaaf ${i}`;
+                if(i===0) label += " (Basis/Anker)";
+                else if(i===1) label += " (Node 20)";
+                let fDisplay = cF.toLocaleString('nl-NL', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+                
+                octavesHTML += `
+                    <div style="${cl} padding:2px;">${label}</div>
+                    <div style="${cl} padding:2px;">${fDisplay} Hz</div>`;
+                cF *= 2;
+            }
+
+            document.getElementById("detail-content").style.borderColor = borderColor;
+            document.getElementById("detail-content").innerHTML = `
+                <h3 style="color:${borderColor}; margin-top:0; transition:0.3s;">> B(6,2) SHL TESSERACT</h3>
+                <p style="margin: 10px 0 15px 0; color:var(--text-muted); font-size:clamp(0.8rem, 1.5vw, 0.95rem); line-height: 1.5;">
+                    Harmonische calculator. <i>Freq = Node &times; 43.2 Hz.</i><br>
+                    Selecteer via het raster of gebruik het uitklapvenster hieronder.
+                </p>
+                <div style="margin-bottom:15px; margin-top:10px;">
+                    <label style="color:var(--text-muted); font-size:0.8rem; font-weight:bold;">TESSERACT NODE SELECTOR:</label>
+                    <select class="aes-btn" style="width:100%; margin-top:5px; border:1px solid ${borderColor}; color:${borderColor}; background:rgba(0,0,0,0.5); padding:10px; cursor:pointer; font-family:monospace; transition:0.3s;" onchange="scanTesseract(parseInt(this.value), true)">
+                        ${optionsHTML}
+                    </select>
+                </div>
+                <div class="data-row"><div class="data-label">FORMULE:</div><div class="data-value">${id} x 43.2 Hz</div></div>
+                <div class="data-row" style="border:none;"><div class="data-label">RESULTEREND:</div><div class="data-value" style="font-size:1.4rem; color:#fff; transition:0.3s;">${freq} Hz ${sync}</div></div>
+                <details style="margin-top:15px; border:1px solid rgba(255,153,0,0.3); padding:10px; background:rgba(0,0,0,0.4); cursor:pointer;">
+                    <summary style="color:#ff9900; font-weight:bold; outline:none;">[+] NODE 1 t/m 10 (Verhoudingen)</summary>
+                    <div style="margin-top:10px; font-size:0.8rem; display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; align-items:center;">
+                        ${ratiosHTML}
+                    </div>
+                </details>
+                <details style="margin-top:10px; border:1px solid rgba(255,153,0,0.3); padding:10px; background:rgba(0,0,0,0.4); cursor:pointer;">
+                    <summary style="color:#ff9900; font-weight:bold; outline:none;">[+] 10 OCTAVEN (Vanaf 432 Hz)</summary>
+                    <div style="margin-top:10px; font-size:0.8rem; display:grid; grid-template-columns:1fr 1fr; gap:5px; align-items:center;">
+                        ${octavesHTML}
+                    </div>
+                </details>
+            `;
+        }
 
         // AES / RIJNDAEL
         const aesMatrixDiv = document.getElementById('aes-state-matrix'); let aesInit = false;
@@ -525,8 +729,7 @@
         function buildUnicodeMatrix() { if (unicodeInit) return; for(let i=0; i<25; i++) { let item = uniSymbols[i]; let cell = document.createElement('div'); cell.className = 'uni-cell'; cell.id = `ucell-${i}`; cell.innerHTML = `<div class="uni-char">${item.char}</div><div class="uni-hex">${item.hex}</div>`; cell.onclick = () => scanUnicode(i, item); cell.onmouseenter = () => { if(window.innerWidth >= 1024) scanUnicode(i, item); }; unicodeGrid.appendChild(cell); } unicodeInit = true; }
         function scanUnicode(idx, item) { playResonance(idx, 0, false, true); for (let j = 0; j < 25; j++) document.getElementById(`ucell-${j}`).className = (j === idx) ? 'uni-cell target' : 'uni-cell faded'; document.getElementById("detail-content").style.borderColor = "var(--color-unicode)"; document.getElementById("detail-content").innerHTML = `<h3 style="color:var(--color-unicode); margin-top:0; border-bottom: 1px dashed rgba(199,116,255,0.4); padding-bottom:10px;">> WOLFRAM|ALPHA QUERY</h3><div style="display:flex; justify-content:space-between; align-items:center;"><div style="flex:1;"><div class="data-row"><div class="data-label">UNICODE HEX:</div><div class="data-value" style="color:#fff; font-weight:bold;">${item.hex}</div></div><div class="data-row"><div class="data-label">ASCII / DEC:</div><div class="data-value">${item.dec}</div></div><div class="data-row"><div class="data-label">HTML CODE:</div><div class="data-value" style="color:var(--color-unicode); font-family:monospace;">${item.html}</div></div><div class="data-row"><div class="data-label">NAMED CHAR:</div><div class="data-value" style="font-size:0.75rem;">${item.name}</div></div></div><div style="font-size:clamp(3rem, 6vw, 4rem); margin-left: 20px; color:var(--color-unicode); text-shadow:0 0 15px rgba(199,116,255,0.6);">${item.char}</div></div>`; }
 
-
-        // --- 5. CANVAS & RENDER ENGINE ---
+        // --- 6. CANVAS & RENDER ENGINE ---
         const canvas = document.getElementById('vortexCanvas');
         const ctx = canvas.getContext('2d');
         let currentModule = null, animFrame = null, cRot = 0;
@@ -553,8 +756,25 @@
             document.getElementById("detail-content").style.borderColor = d.color;
             document.getElementById("detail-content").innerHTML = defaultDetailHTML;
 
+            if (d.type === 'ai_bridge') {
+                const status = document.getElementById('mirrorStatus');
+                if(status) {
+                    status.innerText = isMirrorActive ? "ACTIEF" : "INACTIEF";
+                    status.style.color = isMirrorActive ? "#ff9900" : "#555";
+                    status.style.textShadow = isMirrorActive ? "0 0 5px rgba(255, 153, 0, 0.5)" : "none";
+                }
+            }
+
+            if (d.type === 'observatory') {
+                const statusA = document.getElementById('astroMirrorStatus');
+                if(statusA) {
+                    statusA.innerText = isAstroMirror ? "ZUID (180° INVERSIE)" : "NOORD (STANDAARD)";
+                    statusA.style.color = isAstroMirror ? "#ff9900" : "#00ffcc";
+                }
+            }
+
             // Reset UI
-            matrixGrid.style.display = 'none'; elsGrid.style.display = 'none'; hexGrid.style.display = 'none'; unicodeGrid.style.display = 'none'; omniGrid.style.display = 'none'; luoGrid.style.display = 'none'; document.getElementById('aes-grid').style.display = 'none'; canvas.style.display = 'none';
+            matrixGrid.style.display = 'none'; elsGrid.style.display = 'none'; hexGrid.style.display = 'none'; unicodeGrid.style.display = 'none'; omniGrid.style.display = 'none'; luoGrid.style.display = 'none'; tGrid.style.display = 'none'; document.getElementById('aes-grid').style.display = 'none'; canvas.style.display = 'none';
             if (animFrame) cancelAnimationFrame(animFrame);
 
             // Router
@@ -564,10 +784,16 @@
             else if (d.type === 'unicodegrid') { unicodeGrid.style.display = 'grid'; buildUnicodeMatrix(); for(let i=0; i<25; i++) document.getElementById(`ucell-${i}`).className = 'uni-cell'; }
             else if (d.type === 'omnigrid') { omniGrid.style.display = 'grid'; buildOmniCipher(); for(let i=0; i<64; i++) document.getElementById(`ocell-${i}`).className = 'omni-cell'; }
             else if (d.type === 'luopangrid') { luoGrid.style.display = 'grid'; buildLuoPan(); for(let i=0; i<289; i++) document.getElementById(`lcell-${i}`).className = 'luo-cell'; }
+            else if (d.type === 'tesseractgrid') { 
+                tGrid.style.display = 'grid'; 
+                buildTesseract(); 
+                for(let i=0; i<64; i++) document.getElementById(`tcell-${i}`).className = 'matrix-cell'; 
+                scanTesseract(10, false);
+            }
             else if (d.type === 'aesgrid') { document.getElementById('aes-grid').style.display = 'flex'; buildAesMatrix(); animateAesMatrix(); }
             else { 
                 canvas.style.display = 'block'; 
-                canvas.className = (['ai_bridge', 'vigenere', 'pigpen', 'homophonic'].includes(d.type)) ? 'cartesian-mode' : (d.type !== 'polar' && d.type !== 'geometry_108') ? 'cartesian-mode' : ''; 
+                canvas.className = (['ai_bridge', 'vigenere', 'pigpen', 'homophonic', 'observatory'].includes(d.type)) ? 'cartesian-mode' : (d.type !== 'polar' && d.type !== 'geometry_108') ? 'cartesian-mode' : ''; 
                 renderCanvas(); 
             }
         }
@@ -585,13 +811,78 @@
             else if (type === 'vigenere') drawVigenere(cw, ch);
             else if (type === 'pigpen') drawPigpen(cw, ch);
             else if (type === 'homophonic') drawHomophonic(cw, ch);
+            else if (type === 'observatory') drawObservatory(cw, ch);
             else drawRadar(cw, ch);
             
             ctx.restore();
-            if (['timegrid', 'resonator', 'geometry_108', 'ai_bridge', 'vigenere', 'pigpen', 'homophonic'].includes(type)) { animFrame = requestAnimationFrame(renderCanvas); }
+            if (['timegrid', 'resonator', 'geometry_108', 'ai_bridge', 'vigenere', 'pigpen', 'homophonic', 'observatory'].includes(type)) { animFrame = requestAnimationFrame(renderCanvas); }
         }
 
         // --- CANVAS RENDERERS ---
+        function drawObservatory(cw, ch) {
+            const t = Date.now() * 0.001;
+            const moduleInfo = vortexData[currentModule];
+            const az = parseFloat(moduleInfo.azimuth);
+            
+            // 1. Draw Compass Ring
+            ctx.strokeStyle = 'rgba(0, 255, 204, 0.3)'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(0, 0, 220, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, 200, 0, Math.PI*2); ctx.stroke();
+            
+            // Labels (180 graden gedraaid: S is up, N is down, W is right, E is left)
+            ctx.font = 'bold 16px Courier New'; ctx.fillStyle = 'rgba(0, 255, 204, 0.8)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText("S", 0, -235); ctx.fillText("N", 0, 235); ctx.fillText("W", 235, 0); ctx.fillText("E", -235, 0);
+            
+            ctx.font = '10px Courier New'; ctx.fillStyle = 'rgba(0, 255, 204, 0.4)';
+            for(let i=0; i<360; i+=15) {
+                let ang = (i + 90) * (Math.PI / 180);
+                let inner = 200, outer = (i % 90 === 0) ? 220 : 210;
+                ctx.beginPath(); ctx.moveTo(Math.cos(ang)*inner, Math.sin(ang)*inner); ctx.lineTo(Math.cos(ang)*outer, Math.sin(ang)*outer); ctx.stroke();
+            }
+
+            // 2. Radar Sweep
+            ctx.fillStyle = 'rgba(0, 255, 204, 0.05)';
+            ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0, 0, 200, t % (Math.PI*2), (t % (Math.PI*2)) + 0.5); ctx.fill();
+
+            // 3. Target Vector (180 graden gedraaid visueel = az + 90)
+            let rad = (az + 90) * (Math.PI / 180);
+            let p = { x: Math.cos(rad) * 200, y: Math.sin(rad) * 200, z: 0 };
+            
+            ctx.strokeStyle = moduleInfo.color; ctx.lineWidth = 3; ctx.shadowBlur = 10; ctx.shadowColor = moduleInfo.color;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(p.x, p.y); ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2); ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // 4. Quaternion Mirror (De inverse / flip over de origin)
+            if (isAstroMirror) {
+                const pFlip = { x: -p.x, y: -p.y, z: 0 }; 
+                
+                ctx.strokeStyle = '#ff9900'; ctx.lineWidth = 3; ctx.shadowBlur = 10; ctx.shadowColor = '#ff9900';
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(pFlip.x, pFlip.y); ctx.stroke();
+                ctx.fillStyle = '#ff9900'; ctx.beginPath(); ctx.arc(pFlip.x, pFlip.y, 6, 0, Math.PI*2); ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Connecting mirror line
+                ctx.strokeStyle = 'rgba(255, 153, 0, 0.4)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(pFlip.x, pFlip.y); ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Core dot
+            ctx.fillStyle = '#000'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+
+            // Update DOM text tracker
+            const liveText = document.getElementById('liveTrackerAstro');
+            if(liveText) {
+                let currentAz = isAstroMirror ? (az + 180) % 360 : az;
+                // Simulated Right Ascension (RA) and Declination (DEC)
+                let ra = ((t * 15) % 360).toFixed(2);
+                let dec = (Math.sin(t * 0.1) * 45).toFixed(2);
+                liveText.innerHTML = `AZ: <span style="color:#ff9900">${currentAz.toFixed(1)}°</span> | RA: ${ra}° | DEC: ${dec}°`;
+            }
+        }
+
         function drawVigenere(cw, ch) {
             const t = Date.now() * 0.002;
             ctx.font = '14px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -688,30 +979,44 @@
 
         function drawNeuralSync(cw, ch) {
             const t = Date.now() * 0.0015;
-            ctx.shadowBlur = 40; ctx.shadowColor = 'var(--color-ai)'; ctx.fillStyle = 'rgba(0, 229, 255, 0.8)'; ctx.beginPath(); ctx.arc(0, 0, 37 + Math.sin(t * 5) * 12, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
-            ctx.strokeStyle = 'rgba(0, 229, 255, 0.5)'; ctx.lineWidth = 2; const numNodes = 14; const nodePos = [];
+            
+            // Core Pulsar
+            ctx.shadowBlur = 40; ctx.shadowColor = 'var(--color-ai)'; 
+            ctx.fillStyle = 'rgba(0, 229, 255, 0.8)'; 
+            ctx.beginPath(); ctx.arc(0, 0, 35, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+            
+            // Quaternion as
+            const mirrorAxis = { x: Math.sin(t), y: Math.cos(t), z: 0 };
+            const q = Quat.mirror180(mirrorAxis.x, mirrorAxis.y, mirrorAxis.z);
+            
+            const numNodes = 14;
             for(let i=0; i<numNodes; i++) {
-                let angle = (i * Math.PI * 2 / numNodes) + (t * 0.3) + Math.sin(t + i)*0.6; let dist = 135 + Math.sin(t * 2.5 + i) * 60; let nx = Math.cos(angle) * dist, ny = Math.sin(angle) * dist; nodePos.push({x: nx, y: ny});
-                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(nx, ny); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(nx, ny, 5, 0, Math.PI*2); ctx.fill();
-                if(i > 0) { ctx.beginPath(); ctx.moveTo(nodePos[i-1].x, nodePos[i-1].y); ctx.lineTo(nx, ny); ctx.stroke(); }
-                if(i === numNodes - 1) { ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(nodePos[0].x, nodePos[0].y); ctx.stroke(); }
+                let a = (i * Math.PI * 2 / numNodes) + (t * 0.3); 
+                let d = 160 + Math.sin(t * 2 + i) * 20;
+                let p = { x: Math.cos(a) * d, y: Math.sin(a) * d, z: 0 };
+                
+                // Originele Blauwe Nodes
+                ctx.strokeStyle = 'rgba(0, 229, 255, 0.3)'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(p.x, p.y); ctx.stroke();
+                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill();
+
+                // Optionele Quaternion Gespiegelde Nodes
+                if (isMirrorActive) {
+                    let pm = Quat.rotate(p, q);
+                    ctx.strokeStyle = 'rgba(255, 153, 0, 0.5)'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(pm.x, pm.y); ctx.stroke();
+                    ctx.fillStyle = '#ff9900'; ctx.beginPath(); ctx.arc(pm.x, pm.y, 4, 0, Math.PI*2); ctx.fill();
+                }
             }
-            ctx.strokeStyle = 'rgba(0, 229, 255, 0.2)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, 225, 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 255 + Math.sin(t * 2)*15, 0, Math.PI*2); ctx.stroke();
-            ctx.fillStyle = 'rgba(0, 229, 255, 0.7)'; ctx.font = '16px monospace';
-            for(let j=0; j<12; j++) { let a = (t * 0.8 + (j * Math.PI/6)) % (Math.PI*2), tx = Math.cos(a) * 225, ty = Math.sin(a) * 225; ctx.fillText(Math.random() > 0.5 ? "1" : "0", tx - 6, ty + 6); }
         }
 
         renderCanvas(); 
         
         // --- OMNI-SYNC COMMUNICATIE HUB ---
-        // Ontvangt het signaal van sonc-bridge.html (dat weer afkomstig is van index.html)
         window.addEventListener('message', function(event) {
             if (event.data.type === 'ACTIVATE_RESONATOR') {
                 console.log("OS: Signaal ontvangen! Resonator laden...");
                 if (typeof loadModule === "function") {
                     loadModule('klokbeker_res'); 
                     
-                    // Visuele feedback (een oranje flits over het info paneel)
                     const box = document.getElementById("detail-content");
                     if(box) {
                         box.style.borderColor = "#ff9900";
