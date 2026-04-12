@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VORTEX OMNI-BRIDGE // FIXED SYNC</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            --bg: #020406; --main: #00ffcc; --els: #e67e22; --accent: #ff9900; --muted: #4a7c7c;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            background: var(--bg); color: var(--main); font-family: 'Courier New', monospace; 
+            margin: 0; padding: 10px; height: 100vh; overflow: hidden;
+        }
+
+        /* --- RESPONSIVE LAYOUT ENGINE --- */
+        .bridge-container { display: grid; gap: 15px; height: 100%; }
+        
+        @media (min-width: 1024px) {
+            .bridge-container { grid-template-columns: 350px 1fr 380px; }
+            .mobile-only { display: none; }
+        }
+        @media (max-width: 1023px) {
+            .bridge-container { grid-template-columns: 1fr; overflow-y: auto; }
+            .desktop-only { display: none; }
+            body { overflow-y: auto; }
+        }
+
+        .panel { 
+            background: rgba(2, 5, 8, 0.95); border: 1px solid rgba(0, 255, 204, 0.2); 
+            border-radius: 8px; padding: 15px; display: flex; flex-direction: column;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+        }
+
+        h3 { font-size: 0.9rem; color: var(--accent); margin: 0 0 10px 0; text-transform: uppercase; border-bottom: 1px solid rgba(0,255,204,0.1); }
+
+        /* --- VISUAL CORE --- */
+        .viz-box { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; position: relative;}
+        canvas { background: #000; border-radius: 50%; border: 1px solid var(--muted); box-shadow: 0 0 20px rgba(0,255,204,0.1); }
+        
+        #klokbeker-3d { 
+            width: 90px; height: 130px; border: 2px solid var(--main); 
+            border-radius: 20% 20% 45% 45%; transition: all 0.1s;
+        }
+        .vibration { animation: res-shake 0.05s infinite; border-color: var(--els) !important; box-shadow: 0 0 30px var(--els); }
+        @keyframes res-shake { 0% { transform: scale(1); } 50% { transform: scale(1.03) rotate(1deg); } 100% { transform: scale(1); } }
+
+        /* --- UI ELEMENTS --- */
+        .terminal { background: #000; border: 1px solid var(--muted); padding: 10px; font-size: 0.7rem; color: #888; height: 130px; overflow-y: auto; }
+        .qr-wrap { background: #fff; padding: 10px; width: 150px; height: 150px; align-self: center; border: 4px solid var(--main); margin-top: 10px;}
+        .btn { width: 100%; padding: 15px; background: rgba(0,255,204,0.1); border: 1px solid var(--main); color: var(--main); cursor: pointer; font-weight: bold; border-radius: 4px; border: 1px solid var(--main); }
+        .btn:active { background: var(--main); color: #000; }
+        .heb-char { font-size: 2.2rem; color: var(--els); text-align: center; display: none; text-shadow: 0 0 10px var(--els); margin: 10px 0;}
+    </style>
+</head>
+<body>
+
+    <div class="bridge-container">
+        <div class="panel">
+            <h3>> SONIC COMMAND</h3>
+            <div class="terminal" id="logs">SYSTEM READY... SCANNING FOR AZIMUTH 108°</div>
+            <button class="btn" id="bootBtn" onclick="bootBridge()">ACTIVATE SONIC BRIDGE</button>
+            <div style="margin-top:20px; font-size:0.7rem; border-top:1px solid #222; padding-top:10px;">
+                STATUS: <span id="sys-status">IDLE</span><br>
+                OSCILLATOR: <span id="osc-stat" style="color:red">OFF</span><br>
+                RESONANCE: <span id="freq-val" style="color:var(--els)">0 Hz</span>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>> OMNI-VISUALIZER</h3>
+            <div class="viz-box">
+                <canvas id="radar" width="240" height="240"></canvas>
+                <div id="klokbeker-3d"></div>
+            </div>
+            <div id="sync-label" style="text-align:center; font-size:0.8rem; font-weight:bold; color:red;">LOCKED</div>
+        </div>
+
+        <div class="panel">
+            <h3>> ELS M2M SYNC (19|7)</h3>
+            <div class="qr-wrap"><img id="qr" style="width:100%" src="https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=VORTEX_INIT" alt="QR"></div>
+            <div id="heb-out" class="heb-char">ח ג א ח ב</div>
+            <div style="font-size:0.7rem; color:var(--muted); text-align:center; margin-top: auto;">
+                CURRENT AZIMUTH: <span id="deg-val" style="color:#fff">0°</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('radar');
+        const ctx = canvas.getContext('2d');
+        const logs = document.getElementById('logs');
+        const beker = document.getElementById('klokbeker-3d');
+        const qr = document.getElementById('qr');
+        
+        let angle = 0;
+        let active = false;
+        let audioCtx, osc, gainNode;
+
+        function log(m) { 
+            const time = new Date().toLocaleTimeString();
+            logs.innerHTML += `<br>[${time}] ${m}`; 
+            logs.scrollTop = logs.scrollHeight; 
+        }
+
+        async function bootBridge() {
+            try {
+                // Initialize Audio Context
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
+                }
+
+                // Setup Oscillator and Gain
+                osc = audioCtx.createOscillator();
+                gainNode = audioCtx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(432, audioCtx.currentTime);
+                
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                osc.start();
+
+                active = true;
+                document.getElementById('sys-status').innerText = "RUNNING";
+                document.getElementById('bootBtn').style.opacity = "0.5";
+                document.getElementById('bootBtn').innerText = "SYSTEM ACTIVE";
+                document.getElementById('bootBtn').disabled = true;
+
+                log("Audio Engine 432Hz Online.");
+                log("P2P Handshake: OK.");
+                
+                render();
+            } catch (e) {
+                log("ERROR: Audio activatie mislukt. " + e);
+            }
+        }
+
+        function render() {
+            const cx = 120, cy = 120;
+            ctx.clearRect(0, 0, 240, 240);
+            
+            // Draw Radar Grids
+            ctx.strokeStyle = '#0a1f24';
+            ctx.lineWidth = 1;
+            for(let r = 30; r < 120; r += 30) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            angle += 0.04;
+            const deg = Math.floor((angle * 180 / Math.PI) % 360);
+            document.getElementById('deg-val').innerText = deg + "°";
+
+            // Draw Sweep
+            ctx.fillStyle = 'rgba(0, 255, 204, 0.15)';
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, 120, angle, angle + 0.4);
+            ctx.fill();
+
+            // Sirius Sync (108°) Window Logic
+            if(deg >= 105 && deg <= 112) {
+                if(!beker.classList.contains('vibration')) {
+                    beker.classList.add('vibration');
+                    // Fade in sound to avoid clicks
+                    if(gainNode) gainNode.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.05);
+                    
+                    document.getElementById('heb-out').style.display = 'block';
+                    document.getElementById('sync-label').innerText = "SYNCED";
+                    document.getElementById('sync-label').style.color = "#00ff00";
+                    document.getElementById('osc-stat').innerText = "ON";
+                    document.getElementById('osc-stat').style.color = "#00ff00";
+                    document.getElementById('freq-val').innerText = "432 Hz";
+                    
+                    qr.src = "https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=SIRIUS_DECRYPTED_432HZ_19_7";
+                    log("SYNC DETECTED: Sirius 108°. Resonantie geactiveerd.");
+                }
+            } else {
+                if(beker.classList.contains('vibration')) {
+                    beker.classList.remove('vibration');
+                    // Fade out sound
+                    if(gainNode) gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+                    
+                    document.getElementById('heb-out').style.display = 'none';
+                    document.getElementById('sync-label').innerText = "LOCKED";
+                    document.getElementById('sync-label').style.color = "red";
+                    document.getElementById('osc-stat').innerText = "OFF";
+                    document.getElementById('osc-stat').style.color = "red";
+                    document.getElementById('freq-val').innerText = "0 Hz";
+                    
+                    qr.src = "https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=LOCKED";
+                }
+            }
+            requestAnimationFrame(render);
+        }
+    </script>
+</body>
+</html>

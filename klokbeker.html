@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VORTEX v26.0 // OMNI-NEXUS MASTER DIRECTORY</title>
+    <!-- CryptoJS voor de AES (Rijndael) Encryptie Module -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            /* VORTEX THEME COLORS */
+            --bg-color: #020406;
+            --grid-color: #0a1f24;
+            --text-main: #00ffcc;
+            --text-accent: #ff9900;
+            --text-muted: #4a7c7c;
+            --border-color: #00ffcc44;
+            
+            --color-gamuungell: #ff3333;
+            --color-gulden: #ffaa00;
+            --color-leeuw: #ff33aa;
+            --color-terracotta: #e67e22; 
+            --color-gothiek: #b026ff;
+            --color-ai: #00e5ff;
+            --color-unicode: #c774ff; 
+            --color-omni: #ffffff;
+            --color-luopan: #e74c3c;
+            --color-aes: #3498db;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body { 
+            background-color: var(--bg-color); color: var(--text-main); 
+            font-family: 'Courier New', Courier, monospace; margin: 0; padding: 0; 
+            overflow: hidden; height: 100vh;
+        }
+
+        /* --- BACKGROUND FX --- */
+        body::after {
+            content: " "; display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 9999; background-size: 100% 2px, 3px 100%; pointer-events: none;
+        }
+
+        .bg-grid {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 20px 20px; z-index: -1; opacity: 0.6;
+        }
+
+        /* --- LAYOUT WRAPPER --- */
+        .layout-wrapper { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+
+        /* --- MOBILE HEADER --- */
+        .mobile-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 20px; background: rgba(2, 5, 8, 0.95); border-bottom: 1px solid var(--border-color);
+            z-index: 500; box-shadow: 0 0 20px rgba(0, 255, 204, 0.15);
+        }
+        .sys-title { font-size: 1.2rem; font-weight: bold; color: var(--text-accent); text-shadow: 0 0 8px var(--text-accent); margin: 0; letter-spacing: 2px;}
+        .menu-btn {
+            background: rgba(0, 255, 204, 0.1); border: 1px solid var(--text-main); color: var(--text-main);
+            padding: 8px 15px; font-family: 'Courier New', monospace; font-weight: bold; font-size: 1rem;
+            border-radius: 4px; cursor: pointer; transition: 0.2s;
+        }
+        .menu-btn:active { background: var(--text-main); color: #000; }
+
+        /* --- SIDEBAR MENU --- */
+        .sidebar { 
+            position: fixed; top: 0; left: -100%; width: 85vw; max-width: 360px; height: 100vh;
+            background: rgba(2, 5, 8, 0.98); border-right: 1px solid var(--border-color); 
+            padding: 20px; overflow-y: auto; z-index: 1000; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 5px 0 30px rgba(0,0,0,0.9); padding-bottom: 80px;
+        }
+        .sidebar.open { left: 0; }
+        
+        .menu-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.8); z-index: 900; backdrop-filter: blur(3px);
+        }
+        .menu-overlay.open { display: block; }
+
+        .sidebar h2 { color:var(--text-main); font-size: 1.1rem; border-bottom: 1px solid var(--text-muted); padding-bottom: 10px; margin-top: 0;}
+        ul { list-style-type: none; padding-left: 10px; margin-top: 5px; }
+        .caret { cursor: pointer; color: var(--text-accent); font-weight: bold; display: block; padding: 12px 0; border-bottom: 1px solid rgba(0,255,204,0.1); transition: 0.2s;}
+        .caret:hover { color: #fff; }
+        .caret::before { content: "[-] "; }
+        .caret-down::before { content: "[+] "; }
+        .hidden { display: none; }
+        .node { padding: 12px 0 12px 15px; font-size: 0.9rem; border-bottom: 1px dashed rgba(0,255,204,0.1); cursor: pointer; transition: 0.2s;}
+        .node:hover, .node:active { background: rgba(0, 255, 204, 0.15); color: #fff !important; padding-left: 20px; border-left: 3px solid var(--text-main); }
+
+        /* --- MAIN PANEL (Visuals + Info) --- */
+        .main-panel { 
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            padding: 20px 10px; overflow-y: auto; z-index: 10; gap: 20px;
+        }
+
+        .visual-wrapper { position: relative; width: 100%; max-width: 600px; aspect-ratio: 1/1; flex-shrink: 0; }
+        
+        canvas { 
+            background: #000; border-radius: 50%; box-shadow: 0 0 40px rgba(0, 255, 204, 0.15) inset; 
+            width: 100%; height: 100%; display: block; transition: border-radius 0.4s ease;
+        }
+        canvas.cartesian-mode { border-radius: 12px; border: 1px solid var(--text-muted); }
+
+        .overlay-grid {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #010203; border-radius: 12px; padding: 2%; box-sizing: border-box;
+        }
+
+        /* --- TERMINAL INFO BOX --- */
+        .info-wrapper { width: 100%; max-width: 600px; }
+        .detail-box { 
+            width: 100%; border: 1px solid var(--text-muted); padding: 20px; background: rgba(0, 0, 0, 0.75); 
+            border-radius: 8px; transition: all 0.3s ease; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        
+        .data-row { display: flex; justify-content: space-between; font-size: clamp(0.7rem, 1.5vw, 0.85rem); margin-top: 10px; border-bottom: 1px dashed rgba(0,255,204,0.15); padding-bottom: 6px; align-items: center;}
+        .data-label { color: var(--text-muted); font-weight: bold; width: 35%;}
+        .data-value { width: 65%; text-align: right; word-wrap: break-word;}
+
+        .lore-box { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--text-muted); font-size: clamp(0.75rem, 1.5vw, 0.85rem); color: #ccc; line-height: 1.6; }
+        .lore-box h4 { color: var(--text-accent); margin: 15px 0 8px 0; text-transform: uppercase;}
+        .lore-box ul { margin: 0; padding-left: 20px; color: #aaa;}
+
+        /* --- MODULE SPECIFIEKE CSS OVERLAYS --- */
+        
+        /* 6D B(6) MATRIX */
+        #matrix-grid { grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 1.5%; border: 1px solid var(--text-muted);}
+        .matrix-cell { background: rgba(0, 255, 204, 0.05); border: 1px solid rgba(0, 255, 204, 0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.2s; cursor: crosshair;}
+        .m-bin { font-weight: bold; font-size: clamp(0.5rem, 1.5vw, 1rem); color: var(--text-muted); }
+        .m-dec { font-size: clamp(0.4rem, 1vw, 0.7rem); color: rgba(255,255,255,0.3); margin-top: 2px; }
+        .matrix-cell.faded { opacity: 0.15; filter: grayscale(100%);}
+        .matrix-cell.target { background: rgba(0, 255, 204, 0.4); border-color: var(--text-main); transform: scale(1.15); z-index: 5; box-shadow: 0 0 20px var(--text-main); }
+        .matrix-cell.target .m-bin { color: #fff; } .matrix-cell.target .m-dec { color: var(--text-main); }
+        .matrix-cell.symlink { background: rgba(255, 170, 0, 0.2); border-color: var(--color-gulden); box-shadow: inset 0 0 8px rgba(255,170,0,0.5);}
+        .matrix-cell.symlink .m-bin { color: var(--color-gulden); }
+        .matrix-cell.clone { background: rgba(176, 38, 255, 0.2); border-color: var(--color-gothiek); }
+
+        /* ELS LENINGRAD (Toracode) */
+        #els-grid { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 2%; border-color: var(--color-terracotta); }
+        .els-cell { background: rgba(10, 10, 10, 0.6); border: 1px solid rgba(230, 126, 34, 0.15); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 6px; cursor: crosshair; transition: all 0.2s ease;}
+        .els-heb { font-size: clamp(1.5rem, 6vw, 3.5rem); color: #886644; font-family: 'Times New Roman', serif; line-height: 1; }
+        .els-num { font-size: clamp(0.5rem, 2vw, 0.8rem); color: #555; font-weight: bold; margin-top: 4px; font-family: 'Courier New', monospace;}
+        .els-cell.faded { opacity: 0.25; filter: grayscale(80%); }
+        .els-cell.target, .els-cell.skip { background: rgba(230, 126, 34, 0.15); border: 1px solid rgba(230, 126, 34, 0.8); z-index: 5; box-shadow: inset 0 0 15px rgba(230, 126, 34, 0.2); }
+        .els-cell.target { transform: scale(1.1); background: rgba(230, 126, 34, 0.25); box-shadow: inset 0 0 20px rgba(230, 126, 34, 0.4), 0 0 25px rgba(230, 126, 34, 0.6); }
+        .els-cell.target .els-heb, .els-cell.skip .els-heb { color: #ffaa00; text-shadow: 0 0 10px rgba(255, 170, 0, 0.8); }
+        .els-cell.target .els-num, .els-cell.skip .els-num { color: #cc8833; }
+
+        /* HEXAGRAM I TJING */
+        #hexagram-grid { grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 1.5%; border-color: var(--color-gulden); }
+        .hex-cell { background: rgba(255, 170, 0, 0.05); border: 1px solid rgba(255, 170, 0, 0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 4px; cursor: crosshair; transition: 0.2s;}
+        .hex-cell.faded { opacity: 0.15; filter: grayscale(100%); }
+        .hex-cell:hover, .hex-cell.target { background: rgba(255, 170, 0, 0.4); border-color: var(--color-gulden); transform: scale(1.2); z-index: 5; box-shadow: 0 0 20px var(--color-gulden); }
+        .hex-wrapper { width: 55%; height: 60%; display: flex; flex-direction: column; justify-content: space-evenly; }
+        .hex-line { height: 12%; display: flex; width: 100%; justify-content: space-between; }
+        .hex-yang { background: var(--color-gulden); width: 100%; }
+        .hex-yin::before, .hex-yin::after { content: ''; background: var(--text-main); width: 42%; height: 100%; }
+        .big-hex { width: 60px; height: 60px; display: flex; flex-direction: column; justify-content: space-evenly; margin-left: 20px;}
+
+        /* UNICODE DATABASE GRID */
+        #unicode-grid { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 2%; border-color: var(--color-unicode); }
+        .uni-cell { background: rgba(199, 116, 255, 0.05); border: 1px solid rgba(199, 116, 255, 0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 6px; cursor: crosshair; transition: all 0.2s ease;}
+        .uni-char { font-size: clamp(1.5rem, 6vw, 3rem); color: var(--color-unicode); line-height: 1; text-shadow: 0 0 8px rgba(199, 116, 255, 0.3);}
+        .uni-hex { font-size: clamp(0.5rem, 2vw, 0.8rem); color: var(--text-muted); font-weight: bold; margin-top: 4px; font-family: 'Courier New', monospace;}
+        .uni-cell.faded { opacity: 0.25; filter: grayscale(80%); }
+        .uni-cell.target { background: rgba(199, 116, 255, 0.25); border-color: var(--color-unicode); transform: scale(1.1); z-index: 5; box-shadow: inset 0 0 20px rgba(199, 116, 255, 0.4), 0 0 25px rgba(199, 116, 255, 0.6); }
+        .uni-cell.target .uni-char { color: #fff; text-shadow: 0 0 10px var(--color-unicode); }
+        .uni-cell.target .uni-hex { color: #fff; }
+
+        /* OMNI CIPHER GRID */
+        #omnicipher-grid { grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 1.5%; border: 1px solid var(--text-main); }
+        .omni-cell { background: rgba(0, 255, 204, 0.05); border: 1px solid rgba(0, 255, 204, 0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 4px; cursor: crosshair; transition: all 0.2s ease; }
+        .omni-char { font-size: clamp(1.2rem, 4vw, 2rem); color: var(--text-main); line-height: 1; text-shadow: 0 0 5px rgba(0, 255, 204, 0.5); }
+        .omni-hex { font-size: clamp(0.4rem, 1.5vw, 0.6rem); color: var(--text-muted); font-weight: bold; margin-top: 4px; font-family: 'Courier New', monospace; }
+        .omni-cell.faded { opacity: 0.15; filter: grayscale(100%); }
+        .omni-cell.target { background: rgba(0, 255, 204, 0.3); border-color: #fff; transform: scale(1.15); z-index: 5; box-shadow: 0 0 20px var(--text-main); }
+        .omni-cell.target .omni-char { color: #fff; text-shadow: 0 0 15px #fff; }
+        .omni-cell.target .omni-hex { color: #fff; }
+
+        /* LUO PAN 17x17 GRID */
+        #luopan-grid { grid-template-columns: repeat(17, 1fr); grid-template-rows: repeat(17, 1fr); gap: 1px; border: 1px solid var(--color-luopan); padding: 4px;}
+        .luo-cell { background: rgba(231, 76, 60, 0.05); border: 1px solid rgba(231, 76, 60, 0.15); display: flex; align-items: center; justify-content: center; cursor: crosshair; font-size: clamp(0.4rem, 2vw, 1.2rem); color: var(--color-gulden); transition: 0.1s;}
+        .luo-cell.faded { opacity: 0.1; filter: grayscale(100%); }
+        .luo-cell.target { background: rgba(231, 76, 60, 0.6); border-color: #fff; color: #fff; transform: scale(1.5); z-index: 10; box-shadow: 0 0 15px var(--color-luopan); }
+
+        /* AES ENCRYPTOR / DECRYPTOR */
+        #aes-grid { display: none; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.8); border-radius: 12px; border: 1px solid var(--color-aes); padding: 20px; box-sizing: border-box;}
+        .aes-title { color: var(--color-aes); font-weight: bold; text-align: center; margin-bottom: 10px; border-bottom: 1px dashed var(--color-aes); padding-bottom: 5px;}
+        .aes-input, .aes-key { background: rgba(52, 152, 219, 0.05); border: 1px solid rgba(52, 152, 219, 0.4); color: #fff; padding: 12px; font-family: 'Courier New', monospace; width: 100%; border-radius: 4px; outline: none; transition: 0.3s;}
+        .aes-input:focus, .aes-key:focus { border-color: var(--color-aes); box-shadow: 0 0 10px rgba(52, 152, 219, 0.3); background: rgba(52, 152, 219, 0.15); }
+        .aes-input { resize: none; height: 100px; }
+        .aes-btn-group { display: flex; gap: 10px; }
+        .aes-btn { flex: 1; background: rgba(52, 152, 219, 0.15); border: 1px solid var(--color-aes); color: var(--color-aes); padding: 12px; cursor: pointer; text-align: center; font-weight: bold; text-transform: uppercase; transition: 0.2s; border-radius: 4px;}
+        .aes-btn:hover { background: var(--color-aes); color: #000; box-shadow: 0 0 15px var(--color-aes); }
+        .aes-state-matrix { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 4px; margin-top: 10px; height: 140px; }
+        .aes-state-cell { background: rgba(52, 152, 219, 0.05); border: 1px solid rgba(52, 152, 219, 0.3); display: flex; align-items: center; justify-content: center; color: var(--color-aes); font-size: 0.8rem; font-family: monospace; transition: background 0.1s; border-radius: 2px;}
+
+        /* ==================================================================
+           RESPONSIVE DESKTOP SWITCH
+           ================================================================== */
+        @media (min-width: 1024px) {
+            .layout-wrapper { flex-direction: row; }
+            .mobile-header { display: none; }
+            .sidebar { position: relative; left: 0; transform: none; width: 380px; max-width: none; box-shadow: none; border-right: 1px solid var(--border-color); padding-bottom: 20px; z-index: 10; }
+            .sidebar::-webkit-scrollbar { width: 8px; }
+            .sidebar::-webkit-scrollbar-track { background: var(--bg-color); }
+            .sidebar::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 4px; }
+            .menu-overlay { display: none !important; }
+            .main-panel { flex-direction: row; align-items: flex-start; justify-content: center; padding: 40px; gap: 40px; }
+            .visual-wrapper { flex: 1.2; max-width: 700px; margin: 0; }
+            .info-wrapper { flex: 1; max-width: 500px; }
+            .detail-box { padding: 30px; }
+            h3 { font-size: 1.4rem; }
+            .big-hex { width: 80px; height: 80px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-grid"></div>
+
+    <div class="layout-wrapper">
+        <header class="mobile-header">
+            <h1 class="sys-title">VORTEX OS</h1>
+            <button class="menu-btn" onclick="toggleMenu()">MENU ☰</button>
+        </header>
+
+        <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
+
+        <!-- Sidebar / Directory -->
+        <aside class="sidebar" id="mainMenu">
+            <h2>> DIRECTORY (ASSETS)</h2>
+            <ul class="tree-root">
+                <li><span class="caret caret-down">OMNI-NEXUS</span>
+                    <ul class="nested">
+                        <li class="domain-group"><span class="caret">Domein 1-6: Ankers</span>
+                            <ul class="nested hidden">
+                                <li class="node" onclick="loadModule('stonehenge')">├─ Stonehenge [50.4°]</li>
+                                <li class="node" onclick="loadModule('zwolle')" style="color: var(--text-main);">└─ St. Michaël [81.5°]</li>
+                            </ul>
+                        </li>
+                        <li class="domain-group"><span class="caret">Domein 7: Geometrie</span>
+                            <ul class="nested hidden">
+                                <li class="node" onclick="loadModule('gamuungell')" style="color: var(--color-gamuungell);">├─ Hond: Sleutel 108°</li>
+                                <li class="node" onclick="loadModule('leeuw_150')" style="color: var(--color-leeuw);">├─ Leeuw (Tijd) [150.0°]</li>
+                                <li class="node" onclick="loadModule('gulden_as')" style="color: var(--color-gulden);">├─ Gulden As [161.6°]</li>
+                                <li class="node" onclick="loadModule('klokbeker_6d')" style="color: #00ffcc; font-weight:bold;">└─ 6D Matrix [161.6°]</li>
+                            </ul>
+                        </li>
+                        
+                        <!-- DOMEIN 8: CRYPTOGRAFIE -->
+                        <li class="domain-group"><span class="caret">Domein 8: Cryptografie</span>
+                            <ul class="nested hidden">
+                                <li class="node" onclick="loadModule('els_hebrew')" style="color: var(--color-terracotta);">├─ Tora ELS [3485^7]</li>
+                                <li class="node" onclick="loadModule('vigenere')" style="color: #ff3333;">├─ Vigenère Tabula Recta</li>
+                                <li class="node" onclick="loadModule('pigpen')" style="color: #00ffcc;">├─ Vrijmetselaars Balken</li>
+                                <li class="node" onclick="loadModule('homophonic')" style="color: #ffaa00;">├─ Homofone Substitutie</li>
+                                <li class="node" onclick="loadModule('aes_rijndael')" style="color: var(--color-aes); font-weight:bold; text-shadow: 0 0 5px rgba(52, 152, 219, 0.5);">└─ AES / Rijndael [FIPS 197]</li>
+                            </ul>
+                        </li>
+                        
+                        <li class="domain-group"><span class="caret">Domein 9: Archeo-Akoestiek</span>
+                            <ul class="nested hidden">
+                                <li class="node" onclick="loadModule('klokbeker_res')" style="color: var(--color-terracotta);">└─ Klokbeker Resonator</li>
+                            </ul>
+                        </li>
+                        
+                        <!-- DOMEIN 10: OOSTERSE KOSMOLOGIE -->
+                        <li class="domain-group"><span class="caret">Domein 10: Oosterse Kosmologie</span>
+                            <ul class="nested hidden">
+                                <li class="node" onclick="loadModule('hexagram_lookup')" style="color: var(--color-gulden);">├─ I Tjing Orakel</li>
+                                <li class="node" onclick="loadModule('luopan_17x17')" style="color: var(--color-luopan);">└─ Luo Pan Matrix [17x17]</li>
+                            </ul>
+                        </li>
+                        
+                        <li class="domain-group"><span class="caret">Domein 11: OMNI-AI Bridge</span>
+                            <ul class="nested hidden">
+                                <li class="node" onclick="loadModule('neural_sync')" style="color: var(--color-ai);">└─ NEURAL-SYNC [v6.1]</li>
+                            </ul>
+                        </li>
+                        <li class="domain-group"><span class="caret">Domein 12: Syntaxis & Codering</span>
+                            <ul class="nested hidden">
+                                <li class="node" onclick="loadModule('unicode_matrix')" style="color: var(--color-unicode);">└─ Unicode/ASCII DB</li>
+                            </ul>
+                        </li>
+                        <li class="domain-group"><span class="caret">Domein 13: Syncretische Cyphers</span>
+                            <ul class="nested hidden">
+                                <li class="node" onclick="loadModule('omni_cipher')" style="color: var(--color-omni);">└─ OMNI-CIPHER MASTER</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Display Area -->
+        <main class="main-panel">
+            <div class="visual-wrapper">
+                <canvas id="vortexCanvas" width="600" height="600"></canvas>
+                
+                <!-- Alle Data Grids -->
+                <div id="matrix-grid" class="overlay-grid"></div>
+                <div id="els-grid" class="overlay-grid"></div>
+                <div id="hexagram-grid" class="overlay-grid"></div>
+                <div id="unicode-grid" class="overlay-grid"></div>
+                <div id="omnicipher-grid" class="overlay-grid"></div>
+                <div id="luopan-grid" class="overlay-grid"></div>
+                
+                <!-- AES INTERFACE -->
+                <div id="aes-grid" class="overlay-grid" style="display: none;">
+                    <div class="aes-title">> AES-256 / RIJNDAEL DECRYPTOR</div>
+                    <input type="text" id="aes-key" class="aes-key" placeholder="Enter Secret Key (e.g. Vortex123)" autocomplete="off">
+                    <textarea id="aes-msg" class="aes-input" placeholder="Type your payload here to encrypt or decrypt..."></textarea>
+                    <div class="aes-btn-group">
+                        <button class="aes-btn" onclick="doAesEncrypt()">ENCRYPT</button>
+                        <button class="aes-btn" onclick="doAesDecrypt()">DECRYPT</button>
+                    </div>
+                    <textarea id="aes-res" class="aes-input" placeholder="Output (Ciphertext / Plaintext) will appear here..." readonly></textarea>
+                    <div class="aes-state-matrix" id="aes-state-matrix">
+                        <!-- 4x4 State Matrix vult zich via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-wrapper">
+                <div id="detail-content" class="detail-box">
+                    <h3 style="color:var(--text-main); margin-top:0;">> SYSTEEM ONLINE...</h3>
+                    <p style="color:var(--text-muted); font-size:0.9rem; line-height:1.5;">De Vortex Omni-Nexus is actief. <br><br>Selecteer een module uit de directory aan de linkerkant om de cryptografische vertalers in te laden.</p>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        // --- 1. MENU LOGICA ---
+        const menu = document.getElementById('mainMenu');
+        const overlay = document.getElementById('menuOverlay');
+
+        function toggleMenu() {
+            menu.classList.toggle('open'); overlay.classList.toggle('open');
+            if(menu.classList.contains('open')) initAudio();
+        }
+
+        const togglers = document.getElementsByClassName("caret");
+        for (let i = 0; i < togglers.length; i++) {
+            togglers[i].addEventListener("click", function() { 
+                this.parentElement.querySelector(".nested").classList.toggle("hidden"); 
+                this.classList.toggle("caret-down"); 
+            });
+        }
+
+        // --- 2. DATA KERN ---
+        const vortexData = {
+            stonehenge: { title: "Stonehenge", desc: "Zonne-anker observatorium.", azimuth: "50.4", grid: "[14, 3]", color: "#00ffcc", type: "polar" },
+            zwolle: { title: "Sint-Michaël Zwolle", desc: "Aartsengel as lijn.", azimuth: "81.5", grid: "[18, 11]", color: "#00ffcc", type: "polar" },
+            gamuungell: { title: "Hond: Kosmische Sleutel 108°", desc: "As van het Geheugen.", azimuth: "108.0", grid: "[Plato / Pentagoon]", color: "#ff3333", type: "geometry_108",
+                extendedHTML: `<div class="lore-box"><h4>1. Kosmische Cycli</h4><ul><li>Afstand Aarde-Zon = ~108x zon-diameter.</li><li>Precessie Equinox = 25.920 jaar.</li></ul><h4>2. Heilige Geometrie</h4><ul><li>Interne hoek Pentagoon = 108°.</li></ul><h4>3. Spirituele Anatomie</h4><ul><li>108 bewerkbare chakra's.</li><li>108 Japa Mala kralen.</li></ul></div>` },
+            leeuw_150: { title: "Leeuw: Tijddomein", desc: "Kamer van Kosmische Orde.", azimuth: "150.0", grid: "[Tijd-Domein]", color: "#ff33aa", type: "timegrid" },
+            gulden_as: { title: "Gulden As (Phi)", desc: "Harmonische helling 1:3.", azimuth: "161.6", grid: "[40.4 MOD]", color: "#ffaa00", type: "polar" },
+            klokbeker_6d: { title: "Klokbeker 6D Matrix", desc: "B(6) Hyper-Raster projectie.", azimuth: "161.6", grid: "[6D Matrix]", color: "#00ffcc", type: "hypergrid" },
+            
+            // CRYPTOGRAFIE DOMEIN
+            els_hebrew: { title: "ELS TORA DECRYPTOR", desc: "Equidistant Letter Sequence gebaseerd op 3485^7.", azimuth: "180.0", grid: "[5x5 Gematria]", color: "#e67e22", type: "elsgrid" },
+            vigenere: { title: "VIGENÈRE TABULA RECTA", desc: "Polyalfabetische substitutie, de onkraakbare code uit 1553.", azimuth: "0.0", grid: "[26x26 Matrix]", color: "#ff3333", type: "vigenere", params: {"TYPE": "Polyalfabetisch", "VEILIGHEID": "Klassiek"} },
+            pigpen: { title: "VRIJMETSELAARS CIPHER", desc: "De 'Taal van de Balken' (Pigpen). Geometrische substitutie gebruikt door Rozenkruisers.", azimuth: "0.0", grid: "[Geometrisch Raster]", color: "#00ffcc", type: "pigpen", params: {"TYPE": "Monoalfabetisch", "VEILIGHEID": "Zwak / Visueel"} },
+            homophonic: { title: "HOMOFONE SUBSTITUTIE", desc: "Eén-naar-veel mapping om frequentie-analyse te dwarsbomen (zoals Zodiac).", azimuth: "0.0", grid: "[N:1 Mapping]", color: "#ffaa00", type: "homophonic", params: {"TYPE": "Homofoon", "VEILIGHEID": "Gemiddeld"} },
+            aes_rijndael: { 
+                title: "AES / RIJNDAEL CIPHER", desc: "Advanced Encryption Standard (256-bit).", azimuth: "180.0", grid: "[4x4 State Matrix]", color: "#3498db", type: "aesgrid",
+                extendedHTML: `
+                    <div class="lore-box" style="border-top-color: var(--color-aes);">
+                        <h4 style="color: var(--color-aes);">NIST FIPS PUB 197</h4>
+                        <p style="color:#ddd; font-size:0.8rem; margin-bottom:5px;">AES is een variant van het Rijndael block cipher, ontwikkeld door Belgische cryptografen Joan Daemen en Vincent Rijmen. Goedgekeurd op 26 nov 2001 als de industriestandaard ter vervanging van DES (1977).</p>
+                        <ul style="color:#aaa;">
+                            <li><b>Symmetrisch:</b> Zelfde sleutel voor enc/dec.</li>
+                            <li><b>Block size:</b> 128 bits.</li>
+                            <li><b>Status:</b> Goedgekeurd door de NSA voor Top Secret data.</li>
+                        </ul>
+                    </div>
+                `
+            },
+
+            klokbeker_res: { title: "Archeo-Resonator", desc: "Dynamische 3D reconstructie.", azimuth: "161.6", grid: "[Harmonisch Veld]", color: "#d2691e", type: "resonator" },
+            hexagram_lookup: { title: "I Tjing Orakel", desc: "6-bit hyperkubus mapping.", azimuth: "180.0", grid: "[8x8 Hexagram]", color: "#ffaa00", type: "hexgrid" },
+            luopan_17x17: { title: "LUO PAN MATRIX [17x17]", desc: "Massief 289-cel Feng Shui kompas raster.", azimuth: "180.0", grid: "[17x17 Cosmic Nodes]", color: "#e74c3c", type: "luopangrid" },
+            neural_sync: { title: "NEURAL-SYNC [v6.1]", desc: "Neurale koppeling met OMNI-AI.", azimuth: "360.0", grid: "[Neuraal Netwerk]", color: "#00e5ff", type: "ai_bridge" },
+            unicode_matrix: { title: "UNICODE / ASCII DATABASE", desc: "Wolfram|Alpha karakter encoding matrix.", azimuth: "0.0", grid: "[5x5 Unicode Hex]", color: "#c774ff", type: "unicodegrid" },
+            omni_cipher: { title: "OMNI-CIPHER MASTER", desc: "Syncretische vertaal-matrix. Koppelt Vortex Unicode aan John Dee Alchemie, Maria Stuart Ciphers, Tora ELS en I Tjing Hexagrammen.", azimuth: "360.0", grid: "[8x8 Syncretic Node]", color: "#ffffff", type: "omnigrid" }
+        };
+
+        // --- 3. AUDIO ENGINE ---
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+        function playResonance(orbit, hw, isEls = false, isDigital = false) {
+            initAudio(); if (!audioCtx) return 0;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            
+            if (isDigital) {
+                osc.type = 'square'; osc.frequency.setValueAtTime(800 + (orbit * 50), audioCtx.currentTime);
+                gain.gain.setValueAtTime(0, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 0.02); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+                osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+                return (800 + (orbit * 50));
+            }
+
+            const scale = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
+            const freq = 432 * Math.pow(1.059463, scale[orbit % scale.length]);
+            osc.type = isEls ? 'sine' : ((hw % 2 === 0) ? 'sine' : 'triangle'); 
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            const vol = isEls ? 0.1 : Math.min(0.2, 0.05 + (hw * 0.03));
+            gain.gain.setValueAtTime(0, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + 0.05); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+            return freq.toFixed(1);
+        }
+        function play108Resonance() {
+            initAudio(); if (!audioCtx) return;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.frequency.setValueAtTime(108.0, audioCtx.currentTime); osc.type = 'sawtooth';
+            gain.gain.setValueAtTime(0, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.5); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 3.0);
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 432; 
+            osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 3.0);
+        }
+
+        // --- 4. HTML MODULE BUILDERS ---
+        function toBin(n) { return n.toString(2).padStart(6, '0'); }
+        function getHW(n) { let w=0; for(let i=0; i<6; i++) if(n & (1<<i)) w++; return w; }
+        function getOrbit(n) { let m=n, c=n; for(let i=0;i<6;i++){ c=((c<<1)|(c>>5))&63; if(c<m) m=c; } return m; }
+
+        // AES / RIJNDAEL
+        const aesMatrixDiv = document.getElementById('aes-state-matrix'); let aesInit = false;
+        function buildAesMatrix() {
+            if(aesInit) return;
+            for(let i=0; i<16; i++) {
+                let cell = document.createElement('div'); cell.className = 'aes-state-cell'; cell.id = `aes-cell-${i}`;
+                cell.innerText = "00"; aesMatrixDiv.appendChild(cell);
+            } aesInit = true;
+        }
+        function animateAesMatrix() {
+            for(let i=0; i<16; i++) {
+                let cell = document.getElementById(`aes-cell-${i}`);
+                cell.innerText = Math.floor(Math.random() * 256).toString(16).padStart(2, '0').toUpperCase();
+                cell.style.background = 'rgba(52, 152, 219, 0.5)'; cell.style.color = '#fff'; cell.style.boxShadow = '0 0 10px #3498db';
+                setTimeout(() => { cell.style.background = 'rgba(52, 152, 219, 0.05)'; cell.style.color = 'var(--color-aes)'; cell.style.boxShadow = 'none'; }, 100 + (Math.random() * 300));
+            }
+        }
+        function doAesEncrypt() {
+            initAudio(); const msg = document.getElementById('aes-msg').value; const key = document.getElementById('aes-key').value;
+            if(!msg || !key) return;
+            const encrypted = CryptoJS.AES.encrypt(msg, key).toString();
+            document.getElementById('aes-res').value = encrypted;
+            animateAesMatrix(); playResonance(15, 5, false, true); 
+        }
+        function doAesDecrypt() {
+            initAudio(); const msg = document.getElementById('aes-res').value || document.getElementById('aes-msg').value; const key = document.getElementById('aes-key').value;
+            if(!msg || !key) return;
+            try {
+                const decryptedBytes = CryptoJS.AES.decrypt(msg, key); const decryptedText = decryptedBytes.toString(CryptoJS.enc.Utf8);
+                if(decryptedText.length > 0) document.getElementById('aes-res').value = decryptedText;
+                else document.getElementById('aes-res').value = "DECRYPTIE GEFAALD. ONJUISTE SLEUTEL.";
+            } catch(e) { document.getElementById('aes-res').value = "FOUT: Gecorrumpeerde data of ongeldige sleutelformaat."; }
+            animateAesMatrix(); playResonance(5, 5, false, true); 
+        }
+
+        // LUO PAN 17x17
+        const luoGrid = document.getElementById('luopan-grid'); let luoInit = false; const luoSymbols = [];
+        function generateLuoPanData() { 
+            for(let i=0x2630; i<=0x2637; i++) luoSymbols.push(String.fromCharCode(i)); 
+            for(let i=0x4DC0; i<=0x4DFF; i++) luoSymbols.push(String.fromCharCode(i)); 
+            luoSymbols.push("甲","乙","丙","丁","戊","己","庚","辛","壬","癸"); 
+            luoSymbols.push("子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"); 
+            luoSymbols.push("金","木","水","火","土"); luoSymbols.push("北","南","東","西"); 
+            let extraStart = 0x25A0; while(luoSymbols.length < 289) { luoSymbols.push(String.fromCharCode(extraStart)); extraStart++; } 
+            luoSymbols[144] = '☯'; 
+        }
+        function buildLuoPan() { 
+            if(luoInit) return; generateLuoPanData(); 
+            for(let i=0; i<289; i++) { 
+                let cell = document.createElement('div'); cell.className = 'luo-cell'; cell.id = `lcell-${i}`; cell.innerHTML = luoSymbols[i]; 
+                if(i === 144) cell.style.color = '#fff'; 
+                cell.onclick = () => scanLuoPan(i, luoSymbols[i]); cell.onmouseenter = () => { if(window.innerWidth >= 1024) scanLuoPan(i, luoSymbols[i]); }; 
+                luoGrid.appendChild(cell); 
+            } luoInit = true; 
+        }
+        function scanLuoPan(idx, char) { 
+            playResonance(idx % 24, 0, false, true); 
+            for(let j=0; j<289; j++) document.getElementById(`lcell-${j}`).className = (j===idx) ? 'luo-cell target' : 'luo-cell faded'; 
+            let decVal = char.charCodeAt(0); let hexVal = "U+" + decVal.toString(16).toUpperCase().padStart(4, '0'); let htmlCode = `&amp;#${decVal};`; 
+            let row = Math.floor(idx / 17) + 1; let col = (idx % 17) + 1; 
+            document.getElementById("detail-content").style.borderColor = "var(--color-luopan)"; 
+            document.getElementById("detail-content").innerHTML = `<h3 style="color:var(--color-luopan); margin-top:0; border-bottom: 1px dashed rgba(231, 76, 60, 0.4); padding-bottom:10px;">> LUO PAN UNICODE VERTALER</h3><div style="display:flex; justify-content:space-between; align-items:center;"><div style="flex:1;"><div class="data-row"><div class="data-label" style="color:var(--color-luopan);">MATRIX POSITIE:</div><div class="data-value" style="color:#fff;">Rij ${row}, Kolom ${col}</div></div><div class="data-row"><div class="data-label" style="color:var(--color-luopan);">UNICODE HEX:</div><div class="data-value" style="color:#fff; font-weight:bold;">${hexVal}</div></div><div class="data-row"><div class="data-label" style="color:var(--color-luopan);">ASCII / DEC:</div><div class="data-value">${decVal}</div></div><div class="data-row" style="border-bottom:none;"><div class="data-label" style="color:var(--color-luopan);">HTML ENTITY:</div><div class="data-value" style="font-family:monospace; color:var(--text-muted);">${htmlCode}</div></div></div><div style="font-size:clamp(3rem, 6vw, 4.5rem); margin-left: 20px; color:var(--color-gulden); text-shadow:0 0 15px rgba(231, 76, 60, 0.6);">${char}</div></div>`; 
+        }
+
+        // OMNI CIPHER MASTER
+        const omniGrid = document.getElementById('omnicipher-grid'); let omniInit = false;
+        const oHeb = ["א","ב","ג","ד","ה","ו","ז","ח","ט","י","כ","ל","מ","נ","ס","ע","פ","צ","ק","ר","ש","ת"]; const oHebGem = [1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,200,300,400]; const oDee = ["☉(Zon)","☽(Maan)","☿(Mercurius)","♀(Venus)","♂(Mars)","♃(Jupiter)","♄(Saturnus)","♅(Uranus)","♆(Neptunus)","♇(Pluto)","♈(Ram)","♉(Stier)","♊(Tweelingen)","♋(Kreeft)","♌(Leeuw)","♍(Maagd)","♎(Weegschaal)","♏(Schorpioen)","♐(Boogschutter)","♑(Steenbok)","♒(Waterman)","♓(Vissen)","⚷(Chiron)","⚸(Zwarte Maan)"]; const oStuart = ["◬(A)","⧊(B)","∿(C)","∇(D)","∆(E)","⋈(F)","⨁(G)","⨂(H)","⨝(I)","⨻(K)","⩃(L)","⩋(M)","⟁(N)","⦾(O)","⦿(P)","⧂(Q)","⧃(R)","⧉(S)","⧰(T)","⧱(V)","⧓(W)","⧔(X)","⧕(Y)","⧑(Z)"]; const oVortex = ["⚿","⌖","⌬","⎈","⌘","⌥","⎊","⍋","⍟","⍎","⎔","⎗","⍢","⍣","⍰","⏣","⏢","⏦","⏧","⏾","⍡","⍼","⎘","⎚","⍾","⎉","⎋","⎌","⎍","⎏","⎐","⎑"];
+        function buildOmniCipher() { 
+            if(omniInit) return; 
+            for(let i=0; i<64; i++) { 
+                let cell = document.createElement('div'); cell.className = 'omni-cell'; cell.id = `ocell-${i}`; let vSym = oVortex[i % 32]; cell.innerHTML = `<div class="omni-char">${vSym}</div><div class="omni-hex">${toBin(i)}</div>`; 
+                cell.onclick = () => scanOmni(i); cell.onmouseenter = () => { if(window.innerWidth >= 1024) scanOmni(i); }; omniGrid.appendChild(cell); 
+            } omniInit = true; 
+        }
+        function scanOmni(i) { 
+            playResonance(getOrbit(i), getHW(i), false, true); 
+            for(let j=0; j<64; j++) document.getElementById(`ocell-${j}`).className = (j===i) ? 'omni-cell target' : 'omni-cell faded'; 
+            let vSym = oVortex[i % 32], hSym = oHeb[i % 22], hGem = oHebGem[i % 22], dSym = oDee[i % 24].charAt(0), dMean = oDee[i % 24].substring(1), sSym = oStuart[i % 24].charAt(0), sMean = oStuart[i % 24].substring(1), iSym = String.fromCharCode(0x4DC0 + i); 
+            document.getElementById("detail-content").style.borderColor = "var(--text-main)"; 
+            document.getElementById("detail-content").innerHTML = `<h3 style="color:var(--text-main); margin-top:0; border-bottom: 1px dashed rgba(0,255,204,0.4); padding-bottom:10px;">> OMNI-CIPHER DECRYPTIE [${toBin(i)}]</h3><div class="data-row"><div class="data-label" style="color:var(--text-main);">VORTEX UNICODE:</div><div class="data-value" style="color:#fff;"><span style="font-size:1.5rem; vertical-align:middle; margin-right:10px;">${vSym}</span> Hex. Dec. ${i}</div></div><div class="data-row"><div class="data-label" style="color:var(--color-terracotta);">TORA ELS (HEB):</div><div class="data-value" style="color:#fff;"><span style="font-size:1.5rem; vertical-align:middle; margin-right:10px; color:var(--color-terracotta);">${hSym}</span> Gematria: ${hGem}</div></div><div class="data-row"><div class="data-label" style="color:var(--color-gulden);">JOHN DEE (ALCH):</div><div class="data-value" style="color:#fff;"><span style="font-size:1.5rem; vertical-align:middle; margin-right:10px; color:var(--color-gulden);">${dSym}</span> ${dMean}</div></div><div class="data-row"><div class="data-label" style="color:var(--color-gamuungell);">M. STUART CIPHER:</div><div class="data-value" style="color:#fff;"><span style="font-size:1.5rem; vertical-align:middle; margin-right:10px; color:var(--color-gamuungell);">${sSym}</span> Subst: ${sMean}</div></div><div class="data-row" style="border-bottom:none;"><div class="data-label" style="color:var(--color-gothiek);">I TJING ORACLE:</div><div class="data-value" style="color:#fff;"><span style="font-size:2.5rem; vertical-align:middle; margin-right:10px; color:var(--color-gothiek);">${iSym}</span> Hexagram ${i+1}</div></div>`; 
+        }
+
+        // Andere Grid Builders (Matrix, ELS, Hexagram, Unicode) 
+        const matrixGrid = document.getElementById('matrix-grid'); let matrixInit = false;
+        function buildMatrix() { if(matrixInit) return; for(let i=0; i<64; i++) { let cell = document.createElement('div'); cell.className = 'matrix-cell'; cell.id = `mcell-${i}`; cell.innerHTML = `<div class="m-bin">${toBin(i)}</div><div class="m-dec">${i}</div>`; cell.onclick=()=>scanMatrix(i); cell.onmouseenter=()=>{if(window.innerWidth>=1024) scanMatrix(i);}; matrixGrid.appendChild(cell); } matrixInit=true; }
+        function scanMatrix(id) { let tO=getOrbit(id), tH=getHW(id); let rF=playResonance(tO,tH); let s=0, c=0; for(let i=0; i<64; i++) { let el = document.getElementById(`mcell-${i}`); el.className='matrix-cell faded'; if(i===id) el.className='matrix-cell target'; else if(getHW(i^id)===1){ el.className='matrix-cell symlink'; s++; } else if(getOrbit(i)===tO){ el.className='matrix-cell clone'; c++; } } document.getElementById("detail-content").style.borderColor = "var(--text-main)"; document.getElementById("detail-content").innerHTML = `<h3 style="color:var(--text-main); margin-top:0;">> NODE [${toBin(id)}]</h3><div class="data-row"><div class="data-label">FREQ:</div><div class="data-value">${rF} Hz</div></div><div class="data-row"><div class="data-label">MASSA (Y):</div><div class="data-value">${tH}</div></div><div class="data-row"><div class="data-label">SYMLINKS:</div><div class="data-value">${s} Actief</div></div>`; }
+
+        const hexGrid = document.getElementById('hexagram-grid'); let hexInit = false;
+        function buildHexLines(dec, cls="") { let h=''; for(let b=5; b>=0; b--){ if(((dec>>b)&1)===1) h+=`<div class="hex-line ${cls}"><div class="hex-yang"></div></div>`; else h+=`<div class="hex-line hex-yin ${cls}"></div>`; } return h; }
+        function buildHex() { if(hexInit) return; for(let i=0; i<64; i++) { let cell = document.createElement('div'); cell.className = 'hex-cell'; cell.id = `hcell-${i}`; cell.innerHTML = `<div class="hex-wrapper">${buildHexLines(i)}</div>`; cell.onclick=()=>scanHex(i); cell.onmouseenter=()=>{if(window.innerWidth>=1024) scanHex(i);}; hexGrid.appendChild(cell); } hexInit=true; }
+        function scanHex(id) { let hw=getHW(id); let resFreq=playResonance(getOrbit(id), hw); for(let j=0; j<64; j++) document.getElementById(`hcell-${j}`).className = (j===id) ? 'hex-cell target' : 'hex-cell faded'; document.getElementById("detail-content").style.borderColor = "var(--color-gulden)"; document.getElementById("detail-content").innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><div style="flex:1;"><h3 style="color:var(--color-gulden); margin-top:0;">> HEXAGRAM [${toBin(id)}]</h3><div class="data-row"><div class="data-label">YIN/YANG:</div><div class="data-value">${6-hw} / ${hw}</div></div><div class="data-row"><div class="data-label">FREQ:</div><div class="data-value">${resFreq} Hz</div></div></div><div class="big-hex">${buildHexLines(id,"big-hex-line")}</div></div>`; }
+
+        const elsGrid = document.getElementById('els-grid'); const lNum = "6243375805110007805703125"; const hebMap = ["א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט", "י"]; const latMap = ["A", "B", "G", "D", "H", "V", "Z", "Ch", "T", "Y"]; const cyrMap = ["А", "Б", "Г", "Д", "Х", "В", "З", "Х", "Т", "Й"]; const uniMap = ["U+05D0", "U+05D1", "U+05D2", "U+05D3", "U+05D4", "U+05D5", "U+05D6", "U+05D7", "U+05D8", "U+05D9"]; let elsInit = false;
+        function buildEls() { if (elsInit) return; for(let i=0; i<25; i++) { let d = parseInt(lNum[i]); let cell = document.createElement('div'); cell.className = 'els-cell'; cell.id = `ecell-${i}`; cell.innerHTML = `<div class="els-heb">${hebMap[d]}</div><div class="els-num">${d}</div>`; cell.onclick = () => scanEls(i, d); cell.onmouseenter = () => { if(window.innerWidth >= 1024) scanEls(i, d); }; elsGrid.appendChild(cell); } elsInit = true; }
+        function scanEls(idx, d) { playResonance(d*5, 0, true); let skip = d === 0 ? 1 : d; let seq = []; let seqHeb = "", seqLat = "", seqCyr = "", seqUni = ""; for (let k = 0; k < 5; k++) { let x = (idx + (k * skip)) % 25; seq.push(x); let digit = parseInt(lNum[x]); seqHeb += hebMap[digit] + " "; seqLat += latMap[digit] + " "; seqCyr += cyrMap[digit] + " "; seqUni += uniMap[digit] + " ";  } for (let j = 0; j < 25; j++) { let c = document.getElementById(`ecell-${j}`); c.className = 'els-cell faded'; if (j === idx) c.className = 'els-cell target'; else if (seq.includes(j)) c.className = 'els-cell skip'; } document.getElementById("detail-content").style.borderColor = "var(--color-terracotta)"; document.getElementById("detail-content").innerHTML = `<h3 style="color:var(--color-terracotta); margin-top:0; border-bottom: 1px dashed rgba(230,126,34,0.4); padding-bottom:10px;">> ELS DECRYPTIE ACTIEF</h3><div class="data-row"><div class="data-label">START / SKIP:</div><div class="data-value">Idx ${idx} / +${skip} stap</div></div><div class="data-row" style="margin-top:20px; align-items:flex-start; border-bottom:none;"><div class="data-label" style="color:var(--color-terracotta);">HEB (RTL):</div><div class="data-value" style="font-size:clamp(1.5rem, 3vw, 2rem); font-family:'Times New Roman',serif; color:var(--color-terracotta); letter-spacing:5px; text-shadow:0 0 10px rgba(230,126,34,0.5); direction:rtl;">${seqHeb}</div></div><div class="data-row"><div class="data-label">LATIN:</div><div class="data-value" style="letter-spacing:2px; font-weight:bold;">[ ${seqLat.trim()} ]</div></div><div class="data-row"><div class="data-label">CYRILLIC:</div><div class="data-value" style="letter-spacing:2px; font-weight:bold;">[ ${seqCyr.trim()} ]</div></div><div class="data-row" style="border-bottom:none;"><div class="data-label">UNICODE:</div><div class="data-value" style="font-size:clamp(0.5rem, 1vw, 0.7rem); color:#888;">${seqUni.trim()}</div></div>`; }
+
+        const unicodeGrid = document.getElementById('unicode-grid'); let unicodeInit = false;
+        const uniSymbols = [ {char: '⚿', name: 'SQUARED KEY', hex: 'U+26BF', dec: 9919, html: '&amp;#9919;'}, {char: '⌖', name: 'POSITION INDICATOR', hex: 'U+2316', dec: 8982, html: '&amp;#8982;'}, {char: '⌬', name: 'BENZENE RING', hex: 'U+232C', dec: 9004, html: '&amp;#9004;'}, {char: '⎈', name: 'HELM SYMBOL', hex: 'U+2388', dec: 9096, html: '&amp;#9096;'}, {char: '⌘', name: 'PLACE OF INTEREST', hex: 'U+2318', dec: 8984, html: '&amp;#8984;'}, {char: '⌥', name: 'OPTION KEY', hex: 'U+2325', dec: 8997, html: '&amp;#8997;'}, {char: '⎊', name: 'TRIANGLE DOWN', hex: 'U+238A', dec: 9098, html: '&amp;#9098;'}, {char: '⍋', name: 'APL FUNCTION UPTACK', hex: 'U+234B', dec: 9035, html: '&amp;#9035;'}, {char: '⍟', name: 'APL CIRCLE STAR', hex: 'U+235F', dec: 9055, html: '&amp;#9055;'}, {char: '⍎', name: 'APL DOWN TACK JOT', hex: 'U+234E', dec: 9038, html: '&amp;#9038;'}, {char: '⎔', name: 'SOFTWARE-FUNCTION', hex: 'U+2394', dec: 9108, html: '&amp;#9108;'}, {char: '⎗', name: 'NEXT PAGE', hex: 'U+2397', dec: 9111, html: '&amp;#9111;'}, {char: '⍢', name: 'APL UP TACK DIAERESIS', hex: 'U+2362', dec: 9058, html: '&amp;#9058;'}, {char: '⍣', name: 'APL STAR DIAERESIS', hex: 'U+2363', dec: 9059, html: '&amp;#9059;'}, {char: '⍰', name: 'APL QUAD QUESTION', hex: 'U+2370', dec: 9072, html: '&amp;#9072;'}, {char: '⏣', name: 'BENZENE RING CIRCLE', hex: 'U+23E3', dec: 9187, html: '&amp;#9187;'}, {char: '⏢', name: 'WHITE TRAPEZIUM', hex: 'U+23E2', dec: 9186, html: '&amp;#9186;'}, {char: '⏦', name: 'AC CURRENT', hex: 'U+23E6', dec: 9190, html: '&amp;#9190;'}, {char: '⏧', name: 'ELECTRICAL INTERSECT', hex: 'U+23E7', dec: 9191, html: '&amp;#9191;'}, {char: '⏾', name: 'POWER SLEEP SYMBOL', hex: 'U+23FE', dec: 9214, html: '&amp;#9214;'}, {char: '⍡', name: 'APL UP TACK OVERBAR', hex: 'U+2361', dec: 9057, html: '&amp;#9057;'}, {char: '⍼', name: 'RIGHT ANGLE ZIGZAG', hex: 'U+237C', dec: 9084, html: '&amp;#9084;'}, {char: '⎘', name: 'PREVIOUS PAGE', hex: 'U+2398', dec: 9112, html: '&amp;#9112;'}, {char: '⎚', name: 'CLEAR SCREEN', hex: 'U+239A', dec: 9114, html: '&amp;#9114;'}, {char: '⍾', name: 'BELL SYMBOL', hex: 'U+237E', dec: 9086, html: '&amp;#9086;'} ];
+        function buildUnicodeMatrix() { if (unicodeInit) return; for(let i=0; i<25; i++) { let item = uniSymbols[i]; let cell = document.createElement('div'); cell.className = 'uni-cell'; cell.id = `ucell-${i}`; cell.innerHTML = `<div class="uni-char">${item.char}</div><div class="uni-hex">${item.hex}</div>`; cell.onclick = () => scanUnicode(i, item); cell.onmouseenter = () => { if(window.innerWidth >= 1024) scanUnicode(i, item); }; unicodeGrid.appendChild(cell); } unicodeInit = true; }
+        function scanUnicode(idx, item) { playResonance(idx, 0, false, true); for (let j = 0; j < 25; j++) document.getElementById(`ucell-${j}`).className = (j === idx) ? 'uni-cell target' : 'uni-cell faded'; document.getElementById("detail-content").style.borderColor = "var(--color-unicode)"; document.getElementById("detail-content").innerHTML = `<h3 style="color:var(--color-unicode); margin-top:0; border-bottom: 1px dashed rgba(199,116,255,0.4); padding-bottom:10px;">> WOLFRAM|ALPHA QUERY</h3><div style="display:flex; justify-content:space-between; align-items:center;"><div style="flex:1;"><div class="data-row"><div class="data-label">UNICODE HEX:</div><div class="data-value" style="color:#fff; font-weight:bold;">${item.hex}</div></div><div class="data-row"><div class="data-label">ASCII / DEC:</div><div class="data-value">${item.dec}</div></div><div class="data-row"><div class="data-label">HTML CODE:</div><div class="data-value" style="color:var(--color-unicode); font-family:monospace;">${item.html}</div></div><div class="data-row"><div class="data-label">NAMED CHAR:</div><div class="data-value" style="font-size:0.75rem;">${item.name}</div></div></div><div style="font-size:clamp(3rem, 6vw, 4rem); margin-left: 20px; color:var(--color-unicode); text-shadow:0 0 15px rgba(199,116,255,0.6);">${item.char}</div></div>`; }
+
+
+        // --- 5. CANVAS & RENDER ENGINE ---
+        const canvas = document.getElementById('vortexCanvas');
+        const ctx = canvas.getContext('2d');
+        let currentModule = null, animFrame = null, cRot = 0;
+        let defaultDetailHTML = "";
+
+        function loadModule(id) {
+            if(window.innerWidth < 1024) toggleMenu(); 
+            currentModule = id; const d = vortexData[id];
+            
+            if(id === 'gamuungell') play108Resonance();
+            else initAudio();
+
+            let extra = ''; 
+            if (d.params) for (const [k, v] of Object.entries(d.params)) extra += `<div class="data-row"><div class="data-label">${k}:</div><div class="data-value" style="color:#fff">${v}</div></div>`;
+            
+            defaultDetailHTML = `
+                <h3 style="color:${d.color}; margin-top:0;">> ${d.title}</h3>
+                <p style="margin: 10px 0 15px 0; color:var(--text-muted); font-size:clamp(0.8rem, 1.5vw, 0.95rem); line-height: 1.5;">${d.desc}</p>
+                <div class="data-row"><div class="data-label">AS / AZIMUT:</div><div class="data-value" style="font-weight:bold; color:${d.color}">${d.azimuth}°</div></div>
+                ${extra}
+            `;
+            if(d.extendedHTML) defaultDetailHTML += d.extendedHTML;
+
+            document.getElementById("detail-content").style.borderColor = d.color;
+            document.getElementById("detail-content").innerHTML = defaultDetailHTML;
+
+            // Reset UI
+            matrixGrid.style.display = 'none'; elsGrid.style.display = 'none'; hexGrid.style.display = 'none'; unicodeGrid.style.display = 'none'; omniGrid.style.display = 'none'; luoGrid.style.display = 'none'; document.getElementById('aes-grid').style.display = 'none'; canvas.style.display = 'none';
+            if (animFrame) cancelAnimationFrame(animFrame);
+
+            // Router
+            if (d.type === 'hypergrid') { matrixGrid.style.display = 'grid'; buildMatrix(); for(let i=0; i<64; i++) document.getElementById(`mcell-${i}`).className = 'matrix-cell'; } 
+            else if (d.type === 'elsgrid') { elsGrid.style.display = 'grid'; buildEls(); for(let i=0; i<25; i++) document.getElementById(`ecell-${i}`).className = 'els-cell'; } 
+            else if (d.type === 'hexgrid') { hexGrid.style.display = 'grid'; buildHex(); for(let i=0; i<64; i++) document.getElementById(`hcell-${i}`).className = 'hex-cell'; } 
+            else if (d.type === 'unicodegrid') { unicodeGrid.style.display = 'grid'; buildUnicodeMatrix(); for(let i=0; i<25; i++) document.getElementById(`ucell-${i}`).className = 'uni-cell'; }
+            else if (d.type === 'omnigrid') { omniGrid.style.display = 'grid'; buildOmniCipher(); for(let i=0; i<64; i++) document.getElementById(`ocell-${i}`).className = 'omni-cell'; }
+            else if (d.type === 'luopangrid') { luoGrid.style.display = 'grid'; buildLuoPan(); for(let i=0; i<289; i++) document.getElementById(`lcell-${i}`).className = 'luo-cell'; }
+            else if (d.type === 'aesgrid') { document.getElementById('aes-grid').style.display = 'flex'; buildAesMatrix(); animateAesMatrix(); }
+            else { 
+                canvas.style.display = 'block'; 
+                canvas.className = (['ai_bridge', 'vigenere', 'pigpen', 'homophonic'].includes(d.type)) ? 'cartesian-mode' : (d.type !== 'polar' && d.type !== 'geometry_108') ? 'cartesian-mode' : ''; 
+                renderCanvas(); 
+            }
+        }
+
+        function renderCanvas() {
+            if (animFrame) cancelAnimationFrame(animFrame);
+            const cw = 600; const ch = 600; 
+            ctx.clearRect(0, 0, cw, ch); ctx.save(); ctx.translate(cw/2, ch/2); 
+            
+            const type = vortexData[currentModule]?.type;
+            if (type === 'timegrid') drawTime(cw, ch); 
+            else if (type === 'resonator') drawResonator(cw, ch);
+            else if (type === 'geometry_108') draw108Geometry(cw, ch);
+            else if (type === 'ai_bridge') drawNeuralSync(cw, ch);
+            else if (type === 'vigenere') drawVigenere(cw, ch);
+            else if (type === 'pigpen') drawPigpen(cw, ch);
+            else if (type === 'homophonic') drawHomophonic(cw, ch);
+            else drawRadar(cw, ch);
+            
+            ctx.restore();
+            if (['timegrid', 'resonator', 'geometry_108', 'ai_bridge', 'vigenere', 'pigpen', 'homophonic'].includes(type)) { animFrame = requestAnimationFrame(renderCanvas); }
+        }
+
+        // --- CANVAS RENDERERS ---
+        function drawVigenere(cw, ch) {
+            const t = Date.now() * 0.002;
+            ctx.font = '14px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            let size = 20; let offset = -(26 * size) / 2;
+            let hRow = Math.floor(t * 2) % 26; let hCol = Math.floor(t * 1.5) % 26;
+
+            for(let r=0; r<26; r++) {
+                for(let c=0; c<26; c++) {
+                    let char = String.fromCharCode(65 + (r+c)%26);
+                    let x = offset + c * size + size/2; let y = offset + r * size + size/2;
+                    if (r === hRow || c === hCol) {
+                        ctx.fillStyle = (r === hRow && c === hCol) ? '#fff' : 'rgba(255, 51, 51, 0.8)';
+                        ctx.font = (r === hRow && c === hCol) ? 'bold 18px monospace' : '14px monospace';
+                        if (r === hRow && c === hCol) { ctx.shadowBlur = 10; ctx.shadowColor = '#ff3333'; } else { ctx.shadowBlur = 0; }
+                    } else { ctx.fillStyle = 'rgba(255, 51, 51, 0.3)'; ctx.font = '14px monospace'; ctx.shadowBlur = 0; }
+                    ctx.fillText(char, x, y);
+                }
+            }
+        }
+
+        function drawPigpen(cw, ch) {
+            const t = Date.now() * 0.0015;
+            ctx.strokeStyle = 'rgba(0, 255, 204, 0.6)'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.shadowBlur = 10 + Math.sin(t*3)*5; ctx.shadowColor = '#00ffcc';
+            let s = 50; 
+            function drawHash(ox, oy, dots) {
+                ctx.beginPath(); ctx.moveTo(ox - s*1.5, oy - s/2); ctx.lineTo(ox + s*1.5, oy - s/2); ctx.moveTo(ox - s*1.5, oy + s/2); ctx.lineTo(ox + s*1.5, oy + s/2); ctx.moveTo(ox - s/2, oy - s*1.5); ctx.lineTo(ox - s/2, oy + s*1.5); ctx.moveTo(ox + s/2, oy - s*1.5); ctx.lineTo(ox + s/2, oy + s*1.5); ctx.stroke();
+                if (dots) { ctx.fillStyle = '#00ffcc'; let pos = [-s, 0, s]; for(let x of pos) for(let y of pos) { ctx.beginPath(); ctx.arc(ox + x, oy + y, 5, 0, Math.PI*2); ctx.fill(); } }
+            }
+            function drawX(ox, oy, dots) {
+                ctx.beginPath(); ctx.moveTo(ox - s*1.2, oy - s*1.2); ctx.lineTo(ox + s*1.2, oy + s*1.2); ctx.moveTo(ox - s*1.2, oy + s*1.2); ctx.lineTo(ox + s*1.2, oy - s*1.2); ctx.stroke();
+                if (dots) { ctx.fillStyle = '#00ffcc'; ctx.beginPath(); ctx.arc(ox, oy - s/1.2, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(ox, oy + s/1.2, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(ox - s/1.2, oy, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(ox + s/1.2, oy, 5, 0, Math.PI*2); ctx.fill(); }
+            }
+            drawHash(-130, -100, false); drawHash(130, -100, true); drawX(-130, 130, false); drawX(130, 130, true);
+            ctx.font = 'bold 20px Courier New'; ctx.fillStyle = 'rgba(0, 255, 204, 0.7)'; ctx.shadowBlur = 0;
+            let str = "DE TAAL VAN DE BALKEN VRIJMETSELARIJ ";
+            for(let i=0; i<str.length; i++) { let angle = t + (i * Math.PI*2 / str.length); let r = 260; ctx.fillText(str[i], Math.cos(angle)*r, Math.sin(angle)*r); }
+        }
+
+        function drawHomophonic(cw, ch) {
+            const t = Date.now() * 0.001;
+            ctx.fillStyle = '#ffaa00'; ctx.strokeStyle = 'rgba(255, 170, 0, 0.3)'; ctx.lineWidth = 1.5; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            const letters = ['E', 'T', 'A', 'O', 'I', 'N'];
+            const mappings = [ ['12', 'Δ', '88', '☿', '⧉'], ['44', '∇', '11'], ['01', '⧂', '77'], ['99', '⦾'], ['33', '⨝'], ['55', '⟁'] ];
+            for(let i=0; i<letters.length; i++) {
+                let ly = -180 + i * 70; let lx = -180;
+                ctx.font = 'bold 30px monospace'; ctx.fillStyle = '#fff'; ctx.shadowBlur = 15; ctx.shadowColor = '#ffaa00'; ctx.fillText(letters[i], lx, ly);
+                let maps = mappings[i]; ctx.font = '22px monospace';
+                for(let j=0; j<maps.length; j++) {
+                    let tx = -20 + j * 80; let ty = ly + Math.sin(t*2 + i + j)*15; 
+                    ctx.beginPath(); ctx.moveTo(lx + 30, ly); ctx.bezierCurveTo(lx + 120, ly, tx - 60, ty, tx - 25, ty); ctx.stroke();
+                    ctx.fillStyle = '#ffaa00'; ctx.shadowBlur = 8; ctx.fillText(maps[j], tx, ty);
+                }
+            }
+        }
+
+        function drawRadar(cw, ch) {
+            ctx.strokeStyle = '#113333'; ctx.lineWidth = 1.5;
+            for(let r=60; r<=240; r+=60) { ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.stroke(); }
+            for(const k in vortexData) {
+                if (vortexData[k].type !== 'polar') continue;
+                const a = (vortexData[k].azimuth - 90) * (Math.PI / 180); const x = 240 * Math.cos(a), y = 240 * Math.sin(a);
+                ctx.strokeStyle = (k === currentModule) ? vortexData[k].color : vortexData[k].color + '44';
+                ctx.lineWidth = (k === currentModule) ? 3 : 1.5; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(x, y); ctx.stroke();
+                if(k === currentModule) { ctx.fillStyle = vortexData[k].color; ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI*2); ctx.fill(); }
+            }
+        }
+
+        function draw108Geometry(cw, ch) {
+            const t = Date.now() * 0.0005; ctx.strokeStyle = '#113333'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, 210, 0, Math.PI*2); ctx.stroke();
+            ctx.rotate(t * 0.4); ctx.strokeStyle = 'rgba(255, 51, 51, 0.7)'; ctx.lineWidth = 2.5; ctx.beginPath();
+            for(let i=0; i<=5; i++) { let a = -Math.PI/2 + (i * Math.PI * 2) / 5; let x = 210 * Math.cos(a), y = 210 * Math.sin(a); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); } ctx.stroke();
+            ctx.strokeStyle = 'rgba(255, 51, 51, 0.3)'; ctx.beginPath();
+            for(let i=0; i<=5; i++) { let a = -Math.PI/2 + (i * 2 * Math.PI * 2) / 5; let x = 210 * Math.cos(a), y = 210 * Math.sin(a); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); } ctx.stroke();
+            ctx.rotate(-t * 0.4); let rad108 = -Math.PI/2 + (108.0 * Math.PI / 180);
+            ctx.strokeStyle = '#ff3333'; ctx.lineWidth = 4; ctx.shadowBlur = 20; ctx.shadowColor = '#ff3333'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(255 * Math.cos(rad108), 255 * Math.sin(rad108)); ctx.stroke(); ctx.shadowBlur = 0; 
+            let corePulse = 12 + Math.sin(t * 15) * 6; ctx.fillStyle = '#ff3333'; ctx.beginPath(); ctx.arc(0, 0, corePulse, 0, Math.PI*2); ctx.fill();
+        }
+
+        function drawTime(cw, ch) {
+            const t = Date.now() * 0.001; ctx.strokeStyle = 'rgba(255, 51, 170, 0.4)'; ctx.lineWidth = 2; ctx.translate(-cw/2, -ch/2); 
+            for(let i=1; i<=18; i++) { ctx.beginPath(); for(let j=0; j<=cw; j+=15) ctx.lineTo(j, i*35 + Math.sin(t + i*0.5 + j*0.01)*20); ctx.stroke(); }
+        }
+
+        function drawResonator(cw, ch) {
+            const t = Date.now() * 0.002; cRot += 0.005; 
+            function getRad(y) { let ny = y / 180; return 90 + 38 * Math.sin(ny * 2.8 + 1.2) + 18 * (ny * ny) + Math.sin(t * 10 + ny * 15) * 4; }
+            ctx.fillStyle = 'rgba(0, 255, 204, 0.15)'; ctx.shadowBlur = 40; ctx.shadowColor = 'var(--text-main)'; ctx.beginPath(); ctx.arc(0, 75, 30 + Math.sin(t * 5) * 9, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+            ctx.strokeStyle = 'rgba(210, 105, 30, 0.7)'; ctx.lineWidth = 2;
+            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 6) { ctx.beginPath(); for (let y = -195; y <= 210; y += 10) { let R = getRad(y), x = R * Math.cos(angle + cRot), z = R * Math.sin(angle + cRot), sY = y + z * 0.25; if (y === -195) ctx.moveTo(x, sY); else ctx.lineTo(x, sY); } ctx.stroke(); }
+            ctx.strokeStyle = 'rgba(210, 105, 30, 0.3)'; ctx.lineWidth = 1.5;
+            for (let y = -195; y <= 210; y += 30) { let R = getRad(y); ctx.beginPath(); ctx.ellipse(0, y, R, R * 0.25, 0, 0, Math.PI * 2); ctx.stroke(); }
+        }
+
+        function drawNeuralSync(cw, ch) {
+            const t = Date.now() * 0.0015;
+            ctx.shadowBlur = 40; ctx.shadowColor = 'var(--color-ai)'; ctx.fillStyle = 'rgba(0, 229, 255, 0.8)'; ctx.beginPath(); ctx.arc(0, 0, 37 + Math.sin(t * 5) * 12, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+            ctx.strokeStyle = 'rgba(0, 229, 255, 0.5)'; ctx.lineWidth = 2; const numNodes = 14; const nodePos = [];
+            for(let i=0; i<numNodes; i++) {
+                let angle = (i * Math.PI * 2 / numNodes) + (t * 0.3) + Math.sin(t + i)*0.6; let dist = 135 + Math.sin(t * 2.5 + i) * 60; let nx = Math.cos(angle) * dist, ny = Math.sin(angle) * dist; nodePos.push({x: nx, y: ny});
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(nx, ny); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(nx, ny, 5, 0, Math.PI*2); ctx.fill();
+                if(i > 0) { ctx.beginPath(); ctx.moveTo(nodePos[i-1].x, nodePos[i-1].y); ctx.lineTo(nx, ny); ctx.stroke(); }
+                if(i === numNodes - 1) { ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(nodePos[0].x, nodePos[0].y); ctx.stroke(); }
+            }
+            ctx.strokeStyle = 'rgba(0, 229, 255, 0.2)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, 225, 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 255 + Math.sin(t * 2)*15, 0, Math.PI*2); ctx.stroke();
+            ctx.fillStyle = 'rgba(0, 229, 255, 0.7)'; ctx.font = '16px monospace';
+            for(let j=0; j<12; j++) { let a = (t * 0.8 + (j * Math.PI/6)) % (Math.PI*2), tx = Math.cos(a) * 225, ty = Math.sin(a) * 225; ctx.fillText(Math.random() > 0.5 ? "1" : "0", tx - 6, ty + 6); }
+        }
+
+        renderCanvas(); 
+    </script>
+</body>
+</html>
