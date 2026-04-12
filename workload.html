@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VORTEX v110.27 // OMNI-NEXUS MASTER DIRECTORY</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #050505; --grid-color: #0a1f24; --text-main: #00ffcc;
+            --text-accent: #ff9900; --text-muted: #4a7c7c; --border-color: #00ffcc44;
+            --color-gis: #00ff00; --font-mono: 'Courier New', monospace;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-color); color: var(--text-main); font-family: var(--font-mono); margin: 0; overflow: hidden; height: 100vh; }
+        body::after { content: " "; display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 9999; background-size: 100% 2px, 3px 100%; pointer-events: none; }
+        .bg-grid { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px); background-size: 20px 20px; z-index: -1; opacity: 0.6; }
+        .layout-wrapper { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+        .sidebar { position: fixed; top: 0; left: -100%; width: 85vw; max-width: 360px; height: 100vh; background: rgba(2, 5, 8, 0.98); border-right: 1px solid var(--border-color); padding: 20px; overflow-y: auto; z-index: 1000; transition: left 0.3s; box-shadow: 5px 0 30px rgba(0,0,0,0.9); }
+        .sidebar.open { left: 0; }
+        .main-panel { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 20px; overflow-y: auto; gap: 20px; }
+        .visual-wrapper { position: relative; width: 100%; max-width: 600px; aspect-ratio: 1/1; flex-shrink: 0; }
+        canvas { background: radial-gradient(circle, #111 0%, #000 100%); border-radius: 50%; width: 100%; height: 100%; display: block; border: 1px solid var(--border-color); cursor: crosshair; }
+        .overlay-grid { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #010203; border-radius: 12px; padding: 2%; grid-template-columns: repeat(8, 1fr); gap: 1.5%; border: 1px solid var(--text-muted); }
+        .matrix-cell { background: rgba(0, 255, 204, 0.05); border: 1px solid rgba(0, 255, 204, 0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; cursor: pointer; color: var(--text-muted); font-size: 0.7rem; }
+        .matrix-cell.target { background: rgba(0, 255, 204, 0.4); border-color: var(--text-main); box-shadow: 0 0 15px var(--text-main); color: #fff; }
+        .detail-box { width: 100%; max-width: 600px; border: 1px solid var(--text-muted); padding: 20px; background: rgba(0, 0, 0, 0.85); border-radius: 8px; }
+        .data-row { display: flex; justify-content: space-between; margin-top: 8px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px; font-size: 0.85rem; }
+        .aes-btn { background: rgba(0, 229, 255, 0.1); border: 1px solid var(--text-main); color: var(--text-main); padding: 10px; cursor: pointer; width: 100%; font-family: var(--font-mono); font-weight: bold; margin-top: 10px; border-radius: 4px; }
+        @media (min-width: 1024px) { .layout-wrapper { flex-direction: row; } .sidebar { position: relative; left: 0; width: 380px; } .main-panel { flex-direction: row; align-items: flex-start; justify-content: center; } }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="layout-wrapper">
+        <aside class="sidebar" id="mainMenu">
+            <h2>> DIRECTORY (ASSETS)</h2>
+            <ul class="tree-root">
+                <li><span class="caret">OMNI-NEXUS</span>
+                    <ul class="nested">
+                        <li class="node" onclick="loadModule('observatory')">├─ Observatory [Live 3D]</li>
+                        <li class="node" onclick="loadModule('shl_tesseract')" style="font-weight:bold; color:var(--text-accent);">├─ B(6,2) SHL Tesseract</li>
+                        <li class="node" onclick="loadModule('arcgis_field')" style="color:var(--color-gis);">└─ ArcGIS Telemetrie</li>
+                    </ul>
+                </li>
+            </ul>
+        </aside>
+        <main class="main-panel">
+            <div class="visual-wrapper">
+                <canvas id="vortexCanvas" width="600" height="600"></canvas>
+                <div id="tesseract-grid" class="overlay-grid"></div>
+            </div>
+            <div class="info-wrapper">
+                <div id="detail-content" class="detail-box">
+                    <h3 style="color:var(--text-main); margin-top:0;">> SYSTEEM ONLINE...</h3>
+                    <p style="font-size:0.8rem; color:#888;">Selecteer een module om de matrix te laden.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- 1. DATA & STATE ---
+        let currentModule = null, audioCtx, animFrame;
+        const state3D = { yaw: 0, pitch: 0.3, isFlipped: false, autoRot: true };
+        const qFlip180 = { w: 0, x: 1, y: 0, z: 0 }; // Quaternion 180 flip
+
+        // --- 2. TESSERACT ENGINE ---
+        function buildTesseract() {
+            const grid = document.getElementById('tesseract-grid');
+            grid.innerHTML = '';
+            for(let i=0; i<64; i++) {
+                let cell = document.createElement('div');
+                cell.className = 'matrix-cell';
+                cell.id = `node-${i}`;
+                cell.innerText = i;
+                cell.onclick = () => scanTesseract(i);
+                grid.appendChild(cell);
+            }
+        }
+
+        function scanTesseract(id) {
+            const freq = (id * 43.2).toFixed(1);
+            document.querySelectorAll('.matrix-cell').forEach(c => c.classList.remove('target'));
+            document.getElementById(`node-${id}`).classList.add('target');
+            
+            // Audio trigger
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.value = freq;
+            gain.gain.setTargetAtTime(0.1, audioCtx.currentTime, 0.05);
+            gain.gain.setTargetAtTime(0, audioCtx.currentTime + 1.0, 0.2);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+
+            // UI Update
+            let ratiosHTML = '';
+            for(let i=1; i<=10; i++) {
+                ratiosHTML += `<div class="data-row"><span>N-${i}:</span><span>${(i*43.2).toFixed(1)} Hz</span></div>`;
+            }
+
+            document.getElementById('detail-content').innerHTML = `
+                <h3 style="color:var(--text-accent);">> B(6,2) SHL TESSERACT</h3>
+                <div class="data-row"><span>NODE SELECTOR:</span><span>#${id}</span></div>
+                <div class="data-row"><span>FORMULE:</span><span>${id} x 43.2 Hz</span></div>
+                <div class="data-row" style="border:none;"><div class="data-label">RESULTEREND:</div><div class="data-value" style="font-size:1.5rem; color:#fff;">${freq} Hz</div></div>
+                <details style="margin-top:15px; background:rgba(255,153,0,0.1); padding:10px; border:1px solid var(--text-accent); cursor:pointer;">
+                    <summary style="color:var(--text-accent);">[+] NODE 1 t/m 10 (Ratio's)</summary>
+                    <div style="margin-top:10px; font-size:0.75rem;">${ratiosHTML}</div>
+                </details>
+            `;
+        }
+
+        // --- 3. CORE LOGICA ---
+        function loadModule(id) {
+            currentModule = id;
+            const canvas = document.getElementById('vortexCanvas');
+            const grid = document.getElementById('tesseract-grid');
+            grid.style.display = (id === 'shl_tesseract') ? 'grid' : 'none';
+            canvas.style.display = (id === 'shl_tesseract') ? 'none' : 'block';
+
+            if(id === 'shl_tesseract') {
+                buildTesseract();
+                scanTesseract(39); // Start op jouw node
+            } else if(id === 'observatory') {
+                renderObservatory();
+            }
+        }
+
+        function renderObservatory() {
+            const ctx = document.getElementById('vortexCanvas').getContext('2d');
+            function loop() {
+                if(currentModule !== 'observatory') return;
+                ctx.clearRect(0,0,600,600);
+                // Dynamische kompas/radar tekening hier...
+                ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(300, 300, 200, 0, Math.PI*2); ctx.stroke();
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        loadModule('shl_tesseract'); // Init
+    </script>
+</body>
+</html>
