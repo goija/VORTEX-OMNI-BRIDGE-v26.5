@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VORTEX v26.5 // HEX-NEXUS UNIFIED ENGINE</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            /* VORTEX THEME COLORS */
+            --bg-dark: #030405; 
+            --panel-bg: rgba(5, 10, 15, 0.9); 
+            --border-color: #1a2f33;
+            --main: #00ffcc; 
+            --accent: #ff9900; 
+            --leo: #ff33aa; 
+            --sirius: #f5d400;
+            --venus: #ff5722;
+            --sun: #ffe57f;
+            --moon: #b2ebf2;
+            --muted: #4a7c7c;
+            --dee-gold: #ffd700;
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--main);
+            font-family: var(--font-mono);
+            margin: 0; padding: 0;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+            background-image: 
+                linear-gradient(rgba(0, 255, 204, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 204, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        header {
+            padding: 15px 20px; border-bottom: 1px solid var(--border-color);
+            background: #000; display: flex; justify-content: space-between;
+            z-index: 10; box-shadow: 0 0 15px rgba(0, 255, 204, 0.1);
+        }
+        .sys-title { font-weight: bold; font-size: 1.2rem; color: var(--accent); letter-spacing: 2px;}
+
+        .layout { display: flex; flex: 1; overflow: hidden; }
+
+        .sidebar {
+            width: 360px; background: var(--panel-bg); border-right: 1px solid var(--border-color);
+            padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;
+            z-index: 5;
+        }
+
+        /* Menu Styles */
+        ul { list-style-type: none; padding-left: 10px; margin-top: 5px; }
+        .caret { cursor: pointer; color: var(--accent); font-weight: bold; display: block; padding: 12px 0; border-bottom: 1px solid rgba(0,255,204,0.1); transition: 0.2s;}
+        .caret:hover { color: #fff; }
+        .caret::before { content: "[-] "; }
+        .caret-down::before { content: "[+] "; }
+        .hidden { display: none; }
+        .node { padding: 12px 0 12px 15px; font-size: 0.9rem; border-bottom: 1px dashed rgba(0,255,204,0.1); cursor: pointer; transition: 0.2s;}
+        .node:hover, .node:active { background: rgba(0, 255, 204, 0.15); color: #fff !important; padding-left: 20px; border-left: 3px solid var(--main); }
+
+        .section-title {
+            color: var(--main); font-size: 0.85em; text-transform: uppercase;
+            border-bottom: 1px dashed var(--muted); padding-bottom: 5px; margin-bottom: 10px;
+        }
+
+        .control-group { margin-bottom: 15px; }
+        .control-group label { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); margin-bottom: 5px;}
+        .val { color: #fff; font-weight: bold; }
+
+        input[type="range"] {
+            -webkit-appearance: none; width: 100%; height: 4px; background: #111;
+            border: 1px solid #333; outline: none; border-radius: 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px;
+            background: var(--accent); border-radius: 50%; cursor: pointer;
+        }
+
+        .data-row { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 6px; align-items: center;}
+        .data-row .data-label { color: var(--muted); font-weight: bold; }
+        .data-row .data-value { color: #fff; text-align: right;}
+
+        .canvas-container {
+            flex: 1; display: flex; justify-content: center; align-items: center;
+            position: relative; background: radial-gradient(circle at center, #051014 0%, #000 100%);
+        }
+
+        .hex-wrapper {
+            width: 700px; height: 700px; position: relative;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            background: #000; border: 2px solid var(--accent);
+            box-shadow: inset 0 0 50px rgba(0, 255, 204, 0.1);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .hex-wrapper.circular-mode {
+            clip-path: circle(50% at 50% 50%);
+            border-color: var(--main);
+            box-shadow: inset 0 0 80px rgba(0, 255, 204, 0.15);
+        }
+        
+        .hex-wrapper.white-mode {
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            border-color: #000;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.1);
+            background: #ffffff; /* White background */
+        }
+
+        canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+
+        .btn {
+            background: rgba(0, 255, 204, 0.1); border: 1px solid var(--main); color: var(--main);
+            padding: 10px; cursor: pointer; font-family: var(--font-mono); font-weight: bold;
+            text-transform: uppercase; transition: 0.2s; width: 100%; margin-top: 10px;
+        }
+        .btn.active { background: var(--main); color: #000; }
+
+        @media (max-width: 1024px) {
+            .layout { flex-direction: column; }
+            .sidebar { width: 100%; height: 40vh; border-right: none; border-bottom: 1px solid var(--border-color); }
+            .hex-wrapper { width: 90vw; height: 90vw; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="sys-title">> VORTEX // HEX-NEXUS</div>
+        <div style="color: var(--main);" id="sys-clock">00:00:00</div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <h2 style="color:var(--main); font-size:1.1rem; border-bottom:1px solid var(--muted); padding-bottom:10px; margin-top:0;">> DIRECTORY</h2>
+            <ul class="tree-root">
+                <li><span class="caret caret-down">OMNI-NEXUS</span>
+                    <ul class="nested">
+                        <li class="domain-group"><span class="caret">Domein 1-6: Ankers</span>
+                            <ul class="nested hidden">
+                                <li class="node" onclick="loadModule('stonehenge')">├─ Stonehenge [50.4°]</li>
+                                <li class="node" onclick="loadModule('zwolle_kerk')" style="color: var(--main);">└─ St. Michaël [Kerk-as]</li>
+                            </ul>
+                        </li>
+                        <li class="domain-group"><span class="caret">Domein 7: Geometrie</span>
+                            <ul class="nested hidden">
+                                <li class="node" onclick="loadModule('gamuungell')" style="color: var(--color-gamuungell);">├─ Hond: Sleutel 108°</li>
+                                <li class="node" onclick="loadModule('leeuw_150')" style="color: var(--leo);">├─ Leeuw (Tijd) [150.0°]</li>
+                            </ul>
+                        </li>
+                        <li class="domain-group"><span class="caret">Domein 14: Tesseract</span>
+                            <ul class="nested hidden">
+                                <li class="node" onclick="loadModule('shl_tesseract')" style="color: var(--accent);">└─ B(6,2) SHL Tesseract [432Hz]</li>
+                            </ul>
+                        </li>
+                        <li class="domain-group"><span class="caret caret-down">Domein 16: White Synthesis</span>
+                            <ul class="nested">
+                                <li class="node" onclick="loadModule('kerk_tesseract')" style="color: #fff; font-weight:bold; background:rgba(255,255,255,0.2);">└─ Witte Tesseract (Kerk-As)</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+
+            <div id="quat-controls" style="display:block; margin-top:20px; border-top: 1px solid #222; padding-top:15px;">
+                <div class="section-title">QUATERNION KINEMATICA</div>
+                <div class="control-group">
+                    <label><span>PITCH (X-As)</span> <span class="val" id="val-pitch">0.50</span></label>
+                    <input type="range" id="ctrl-pitch" min="-314" max="314" value="50">
+                </div>
+                <div class="control-group">
+                    <label><span>YAW (Y-As / Tijd)</span> <span class="val" id="val-yaw">0.00</span></label>
+                    <input type="range" id="ctrl-yaw" min="-314" max="314" value="0">
+                </div>
+                <div class="control-group">
+                    <label><span>ROLL (Z-As)</span> <span class="val" id="val-roll">0.00</span></label>
+                    <input type="range" id="ctrl-roll" min="-314" max="314" value="0">
+                </div>
+                <button class="btn active" id="btn-autorotate">AUTO-ROTATIE (YAW): AAN</button>
+
+                <div id="resonator-controls" style="display:none;">
+                    <div class="section-title" style="margin-top: 20px;">RESONANTIE VELD</div>
+                    <div class="control-group">
+                        <label><span>BASE FREQ (Hz)</span> <span class="val" style="color:var(--accent)" id="val-freq">432.0</span></label>
+                        <input type="range" id="ctrl-freq" min="200" max="864" value="432">
+                    </div>
+                    <div class="control-group">
+                        <label><span>AMPLITUDE (Pulse)</span> <span class="val" id="val-amp">1.0</span></label>
+                        <input type="range" id="ctrl-amp" min="0" max="200" value="100">
+                    </div>
+                </div>
+            </div>
+
+            <div id="module-details" style="margin-top:20px; border-top: 1px dashed var(--muted); padding-top:15px;">
+                </div>
+        </aside>
+
+        <div class="canvas-container">
+            <div class="hex-wrapper white-mode" id="canvas-mask">
+                <canvas id="hexCanvas" width="700" height="700"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('hexCanvas');
+        const ctx = canvas.getContext('2d');
+        const hexMask = document.getElementById('canvas-mask');
+
+        // --- MATH: QUATERNIONS ---
+        class Quaternion {
+            constructor(w=1, x=0, y=0, z=0) { this.w=w; this.x=x; this.y=y; this.z=z; }
+            multiply(q) {
+                return new Quaternion(
+                    this.w*q.w - this.x*q.x - this.y*q.y - this.z*q.z,
+                    this.w*q.x + this.x*q.w + this.y*q.z - this.z*q.y,
+                    this.w*q.y - this.x*q.z + this.y*q.w + this.z*q.x,
+                    this.w*q.z + this.x*q.y - this.y*q.x + this.z*q.w
+                );
+            }
+            conjugate() { return new Quaternion(this.w, -this.x, -this.y, -this.z); }
+            rotateVector(v) {
+                let vecQ = new Quaternion(0, v.x, v.y, v.z);
+                let res = this.multiply(vecQ).multiply(this.conjugate());
+                return { x: res.x, y: res.y, z: res.z };
+            }
+        }
+        function eulerToQ(pitch, yaw, roll) {
+            let cy = Math.cos(yaw*0.5), sy = Math.sin(yaw*0.5), cp = Math.cos(pitch*0.5), sp = Math.sin(pitch*0.5), cr = Math.cos(roll*0.5), sr = Math.sin(roll*0.5);
+            return new Quaternion(cr*cp*cy+sr*sp*sy, sr*cp*cy-cr*sp*sy, cr*sp*cy+sr*cp*sy, cr*cp*sy-sr*sp*cy);
+        }
+
+        let isPolarFlipActive = false;
+        function togglePolarFlip() {
+            isPolarFlipActive = !isPolarFlipActive;
+            const statusEl = document.getElementById('polar-status');
+            if(statusEl) {
+                statusEl.innerText = isPolarFlipActive ? "ACTIEF (150°/330° INVERSIE)" : "STANDAARD (108°/288°)";
+                statusEl.style.color = isPolarFlipActive ? "var(--leo)" : "var(--main)";
+            }
+        }
+
+        // --- DATA DICTIONARY ---
+        const vortexData = {
+            stonehenge: { title: "STONEHENGE", desc: "Zonne-anker kompas.", color: "var(--main)", type: "compass" },
+            zwolle_kerk: { title: "ST. MICHAËL KERK-AS", desc: "3D Geometrisch Kompas.", color: "var(--main)", type: "church_axis" },
+            gamuungell: { title: "Hond: Kosmische Sleutel 108°", desc: "As van het Geheugen.", color: "var(--color-gamuungell)", type: "geom" },
+            leeuw_150: { title: "Leeuw: Tijddomein", desc: "Kamer van Kosmische Orde.", color: "var(--leo)", type: "geom" },
+            shl_tesseract: { title: "B(6,2) SHL TESSERACT", desc: "Harmonische 3D Directory.", color: "var(--accent)", type: "tesseract" },
+            kerk_tesseract: { 
+                title: "WITTE TESSERACT (KERK-AS)", 
+                desc: "Synthese van de 82° St. Michaëlas, het 108° pentagoon, de 34850 Halo en de B(6) hyperkubus op een architectonische blauwdruk (Light Mode).", 
+                color: "#ffffff", 
+                type: "white_tesseract",
+                extendedHTML: `
+                    <div style="margin-top: 15px; border-top: 1px dashed rgba(255, 255, 255, 0.4); padding-top: 10px;">
+                        <div class="data-row"><div class="data-label">ARCHITECTUUR (X-As):</div><div class="data-value" style="color:var(--main);">82.0°</div></div>
+                        <div class="data-row"><div class="data-label">PENTAGOON (Opener):</div><div class="data-value" style="color:var(--sirius);">108.0°</div></div>
+                        <div class="data-row"><div class="data-label">TESSERACT:</div><div class="data-value" style="color:#aaa;">64 Nodes / 192 Edges</div></div>
+                        <div class="data-row"><div class="data-label">AUDIO HALO:</div><div class="data-value" style="color:var(--leo);">48 Nodes (r²=34850)</div></div>
+                        
+                        <div style="margin-top:15px; text-align:center; padding:10px; background:rgba(0,0,0,0.5); border:1px solid var(--muted);">
+                            <span style="font-size:0.7rem; color:var(--muted);">POLAR GREYLINE SCHADUW</span><br>
+                            <span id="polar-status" style="font-weight:bold; color:var(--main);">STANDAARD (108°/288°)</span>
+                        </div>
+                        <button class="btn" style="margin-top:10px; border-color:#fff; color:#fff;" onclick="togglePolarFlip()">ACTIVEER 150° SCHADUW AS</button>
+                    </div>
+                `
+            }
+        };
+
+        // --- Menu toggles ---
+        const togglers = document.getElementsByClassName("caret");
+        for (let i = 0; i < togglers.length; i++) {
+            togglers[i].addEventListener("click", function() { 
+                this.parentElement.querySelector(".nested").classList.toggle("hidden"); 
+                this.classList.toggle("caret-down"); 
+            });
+        }
+
+        // --- B(6) TESSERACT LOGIC ---
+        function getHW(n) { let w=0; for(let i=0; i<6; i++) if(n & (1<<i)) w++; return w; }
+        function shl(n) { return ((n << 1) | (n >> 5)) & 63; }
+        function getOrbit(n) { let min = n, curr = n; for(let i=0; i<6; i++) { curr = shl(curr); if(curr < min) min = curr; } return min; }
+
+        let tNodes = [], tEdges = [];
+        const tRadii = { 0:0.0, 63:0.0, 1:1.0, 31:1.0, 3:1.5, 5:0.6, 9:2.0, 15:1.5, 23:0.6, 27:2.0, 7:2.2, 11:1.2, 19:0.5, 21:0.0 };
+        // De kleuren voor Dark Mode tesseract
+        const hwColors = ["#333", "#1976D2", "#00BCD4", "#4CAF50", "#FFC107", "#FF5722", "#E91E63"];
+
+        function buildTesseract() {
+            const orbits = {};
+            for(let i=0; i<64; i++) { let o = getOrbit(i); if(!orbits[o]) orbits[o] = []; orbits[o].push(i); }
+            for(let i=0; i<64; i++) {
+                let hw = getHW(i); let o = getOrbit(i); let lst = orbits[o]; lst.sort((a,b)=>a-b);
+                let ang = (lst.indexOf(i) / lst.length) * Math.PI * 2;
+                let r = tRadii[o] !== undefined ? tRadii[o] : 1.0;
+                tNodes.push({ id: i, hw: hw, bx: Math.cos(ang)*r, by: (hw-3)*0.8, bz: Math.sin(ang)*r });
+            }
+            for(let i=0; i<64; i++) { for(let j=i+1; j<64; j++) if(getHW(i^j) === 1) tEdges.push([i,j]); }
+        }
+        buildTesseract();
+
+        // --- STATE ---
+        let state = {
+            module: 'kerk_tesseract',
+            pitch: 0.5, yaw: 0, roll: 0, 
+            autoRot: true, freq: 432, amp: 1.0, time: 0
+        };
+
+        // --- UI BINDINGS ---
+        const bindSlider = (id, key, multiplier=1, isAngle=false) => {
+            const el = document.getElementById(id);
+            const valEl = document.getElementById(id.replace('ctrl-', 'val-'));
+            if(el) {
+                el.addEventListener('input', (e) => {
+                    let v = parseFloat(e.target.value) * multiplier;
+                    state[key] = v;
+                    if(isAngle && !state.autoRot) state.autoRot = false; 
+                    valEl.innerText = v.toFixed(2);
+                });
+            }
+        };
+        bindSlider('ctrl-pitch', 'pitch', 0.01, true); bindSlider('ctrl-yaw', 'yaw', 0.01, true); bindSlider('ctrl-roll', 'roll', 0.01, true);
+        bindSlider('ctrl-freq', 'freq', 1); bindSlider('ctrl-amp', 'amp', 0.01);
+
+        document.getElementById('btn-autorotate').addEventListener('click', function() {
+            state.autoRot = !state.autoRot;
+            this.classList.toggle('active');
+            this.innerText = `AUTO-ROTATIE (YAW): ${state.autoRot ? 'AAN' : 'UIT'}`;
+        });
+
+        function loadModule(id) {
+            state.module = id;
+            const d = vortexData[id];
+            
+            let html = `
+                <h3 style="color:${d.color}; margin-top:0;">> ${d.title}</h3>
+                <p style="color:var(--muted); font-size:0.8rem; line-height:1.5;">${d.desc}</p>
+            `;
+            if (d.extendedHTML) html += d.extendedHTML;
+            document.getElementById('module-details').innerHTML = html;
+
+            document.getElementById('quat-controls').style.display = ['tesseract', 'church_axis', 'compass', 'white_tesseract'].includes(d.type) ? 'block' : 'none';
+            document.getElementById('resonator-controls').style.display = ['tesseract', 'white_tesseract'].includes(d.type) ? 'block' : 'none';
+            
+            if(d.type === 'tesseract') {
+                hexMask.className = 'hex-wrapper'; 
+            } else if(d.type === 'church_axis' || d.type === 'compass') {
+                hexMask.className = 'hex-wrapper circular-mode';
+            } else if(d.type === 'white_tesseract') {
+                hexMask.className = 'hex-wrapper white-mode';
+            } else {
+                hexMask.className = 'hex-wrapper'; 
+            }
+        }
+
+        // --- RENDER ENGINE ---
+        
+        // WHITE TESSERACT + CHURCH AXIS ENGINE (SYNTHESIS)
+        function drawWhiteKerkTesseract() {
+            if(state.autoRot) {
+                state.yaw += 0.003;
+                document.getElementById('ctrl-yaw').value = (state.yaw * 100) % 314;
+                document.getElementById('val-yaw').innerText = state.yaw.toFixed(2);
+            }
+
+            // Fill white background explicitly
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 700, 700);
+
+            let pulse = 1 + Math.sin(state.time * (state.freq / 100)) * (0.2 * state.amp);
+            let scale = 140 * pulse; // Iets grotere tesseract
+            let q = eulerToQ(state.pitch, state.yaw, state.roll);
+            const cx = 350, cy = 350;
+
+            // 1. Draw Compass Rings (Dark ink)
+            ctx.lineWidth = 1;
+            [120, 200, 280].forEach(r => {
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+                ctx.beginPath();
+                for(let a=0; a<=Math.PI*2; a+=0.1) {
+                    let p = q.rotateVector({x: Math.cos(a)*r, y:0, z: Math.sin(a)*r});
+                    let f = 1000 / (1000 - p.z);
+                    if(a===0) ctx.moveTo(cx + p.x*f, cy + p.y*f); else ctx.lineTo(cx + p.x*f, cy + p.y*f);
+                }
+                ctx.closePath(); ctx.stroke();
+            });
+
+            // 2. Draw Center Pentagon (108° Internal Angles) - Orange/Gold
+            ctx.strokeStyle = 'rgba(255, 153, 0, 0.8)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for(let i=0; i<=5; i++) {
+                let a = i * (Math.PI * 2 / 5) - Math.PI/2; 
+                let p = q.rotateVector({x: Math.cos(a)*200, y:0, z: Math.sin(a)*200});
+                let f = 1000 / (1000 - p.z);
+                if(i===0) ctx.moveTo(cx + p.x*f, cy + p.y*f);
+                else ctx.lineTo(cx + p.x*f, cy + p.y*f);
+            }
+            ctx.stroke();
+
+            // 3. TESSERACT (Hypercube Edges & Nodes)
+            // Transform
+            tNodes.forEach(n => {
+                let v = { x: n.bx * scale, y: n.by * scale, z: n.bz * scale };
+                let p = q.rotateVector(v); let f = 1000 / (1000 - p.z);
+                n.px = cx + p.x * f; n.py = cy + p.y * f; n.pz = p.z; n.s = f;
+            });
+
+            // Edges (Dark lines)
+            ctx.lineWidth = 0.8;
+            tEdges.forEach(e => {
+                let n1 = tNodes[e[0]], n2 = tNodes[e[1]];
+                if (n1.pz > 800 || n2.pz > 800) return;
+                // Lijnen iets donkerder maken voor contrast op wit
+                ctx.strokeStyle = `rgba(0, 0, 0, 0.15)`;
+                ctx.beginPath(); ctx.moveTo(n1.px, n1.py); ctx.lineTo(n2.px, n2.py); ctx.stroke();
+            });
+
+            // 4. The 34850 Halo (48 Audio-Mappers)
+            const haloRadius = Math.sqrt(34850); 
+            ctx.fillStyle = 'rgba(255, 51, 170, 0.5)'; // Translucent pink/leo
+            for(let i=0; i<48; i++) {
+                let a = i * (Math.PI * 2 / 48);
+                let p = q.rotateVector({x: Math.cos(a)*haloRadius, y:0, z: Math.sin(a)*haloRadius});
+                let f = 1000 / (1000 - p.z);
+                if (p.z < 800) {
+                    let pSize = 1.5 + Math.sin(state.time*5 + i*0.5) * 1.5;
+                    ctx.beginPath(); ctx.arc(cx + p.x*f, cy + p.y*f, pSize*f, 0, Math.PI*2); ctx.fill();
+                }
+            }
+
+            // Helpers for drawing Axis lines
+            let center = q.rotateVector({x:0, y:0, z:0});
+            let cF = 1000 / (1000 - center.z);
+            const drawAxisLine = (az, color, label, width=2, isDashed=false) => {
+                let rad = (az - 90) * (Math.PI / 180);
+                let pLine = q.rotateVector({x: Math.cos(rad)*280, y:0, z: Math.sin(rad)*280});
+                let fLine = 1000 / (1000 - pLine.z);
+                
+                ctx.strokeStyle = color; ctx.lineWidth = width;
+                if(isDashed) ctx.setLineDash([4, 4]); else ctx.setLineDash([]);
+                ctx.beginPath(); ctx.moveTo(cx + center.x*cF, cy + center.y*cF); ctx.lineTo(cx + pLine.x*fLine, cy + pLine.y*fLine); ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = color; ctx.beginPath(); ctx.arc(cx + pLine.x*fLine, cy + pLine.y*fLine, 3*fLine, 0, Math.PI*2); ctx.fill();
+                if(pLine.z < 800) {
+                    ctx.font = 'bold 10px Courier New'; ctx.fillText(label, cx + pLine.x*fLine + 6, cy + pLine.y*fLine);
+                }
+            };
+
+            // 5. Architectonische Kerk-As (82.0°) - Dark Blue/Cyan
+            drawAxisLine(82.0, '#006688', 'KERK-AS (82°)', 2.5);
+
+            // 6. De Assen & Polar Flip Logic
+            if(isPolarFlipActive) {
+                // Avond/Nacht Cyclus
+                drawAxisLine(330.0, '#e6b800', 'AVOND ZON (330°)', 1.5, true);
+                drawAxisLine(150.0, '#cc0066', 'SCHADUW (150°)', 2);
+            } else {
+                // Ochtend Cyclus
+                drawAxisLine(108.0, '#e6b800', 'OPENER (108°)', 2);
+                drawAxisLine(288.0, 'rgba(0,0,0,0.4)', 'INVERSIE (288°)', 1.5, true);
+            }
+
+            // 7. Tesseract Nodes over Axis lines
+            [...tNodes].sort((a,b) => b.pz - a.pz).forEach(n => {
+                if (n.pz > 800) return;
+                ctx.fillStyle = hwColors[n.hw]; 
+                ctx.shadowBlur = 3; ctx.shadowColor = 'rgba(0,0,0,0.2)'; // Slight dark shadow for depth on white
+                ctx.beginPath(); ctx.arc(n.px, n.py, 3.5 * n.s, 0, Math.PI*2); ctx.fill();
+            });
+            ctx.shadowBlur = 0;
+
+            // Center Point
+            ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(cx + center.x*cF, cy + center.y*cF, 4*cF, 0, Math.PI*2); ctx.fill();
+        }
+
+        // Standard Tesseract (Dark mode)
+        function drawTesseractEngine() {
+            if(state.autoRot) {
+                state.yaw += 0.005;
+                document.getElementById('ctrl-yaw').value = (state.yaw * 100) % 314;
+                document.getElementById('val-yaw').innerText = state.yaw.toFixed(2);
+            }
+
+            ctx.clearRect(0, 0, 700, 700);
+            let pulse = 1 + Math.sin(state.time * (state.freq / 100)) * (0.2 * state.amp);
+            let scale = 120 * pulse;
+            let q = eulerToQ(state.pitch, state.yaw, state.roll);
+
+            // Transform Tesseract
+            tNodes.forEach(n => {
+                let v = { x: n.bx * scale, y: n.by * scale, z: n.bz * scale };
+                let p = q.rotateVector(v); let f = 1000 / (1000 - p.z);
+                n.px = 350 + p.x * f; n.py = 350 + p.y * f; n.pz = p.z; n.s = f;
+            });
+
+            ctx.lineWidth = 1;
+            tEdges.forEach(e => {
+                let n1 = tNodes[e[0]], n2 = tNodes[e[1]];
+                if (n1.pz > 800 || n2.pz > 800) return;
+                let alpha = 0.15 + Math.sin(state.time*5 + n1.hw)*0.1;
+                ctx.strokeStyle = `rgba(0, 229, 255, ${alpha})`;
+                ctx.beginPath(); ctx.moveTo(n1.px, n1.py); ctx.lineTo(n2.px, n2.py); ctx.stroke();
+            });
+
+            [...tNodes].sort((a,b) => b.pz - a.pz).forEach(n => {
+                if (n.pz > 800) return;
+                ctx.fillStyle = hwColors[n.hw]; ctx.shadowBlur = 5; ctx.shadowColor = hwColors[n.hw];
+                ctx.beginPath(); ctx.arc(n.px, n.py, 3 * n.s, 0, Math.PI*2); ctx.fill();
+            });
+            ctx.shadowBlur = 0;
+        }
+
+        function render() {
+            state.time += 0.01;
+
+            if (state.module === 'shl_tesseract') {
+                drawTesseractEngine();
+            } else if (state.module === 'kerk_tesseract') {
+                drawWhiteKerkTesseract();
+            } else {
+                // Fallback clear
+                ctx.clearRect(0, 0, 700, 700);
+                ctx.fillStyle = "rgba(0, 255, 204, 0.5)";
+                ctx.font = "20px Courier New";
+                ctx.fillText("MODULE STANDBY...", 250, 350);
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        // System Clock Update
+        setInterval(() => {
+            document.getElementById('sys-clock').innerText = new Date().toLocaleTimeString('nl-NL', {hour12: false});
+        }, 1000);
+
+        // Boot
+        loadModule('kerk_tesseract');
+        render();
+    </script>
+</body>
+</html>

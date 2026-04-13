@@ -16,23 +16,15 @@
         .panel { background: rgba(2, 5, 8, 0.95); border: 1px solid rgba(230, 126, 34, 0.2); border-radius: 4px; padding: 15px; display: flex; flex-direction: column; }
         h3 { font-size: 0.85rem; color: var(--accent); margin: 0 0 10px 0; text-transform: uppercase; border-bottom: 1px dashed rgba(230,126,34,0.3); padding-bottom: 5px; }
         .viz-box { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; position: relative;}
-        
-        canvas { 
-            background: radial-gradient(circle at center, #0a1f24 0%, #000 100%); 
-            border-radius: 50%; border: 1px solid var(--muted); 
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.15) inset, 0 0 15px rgba(230,126,34,0.1); 
-            width: 240px; height: 240px; transition: 0.3s;
-        }
-        canvas.locked {
-            border-color: var(--main);
-            box-shadow: 0 0 30px rgba(0, 255, 204, 0.4) inset, 0 0 20px rgba(0, 255, 204, 0.2);
-        }
-        
+        canvas { background: #000; border-radius: 50%; border: 1px solid var(--muted); box-shadow: 0 0 20px rgba(230,126,34,0.1); width: 200px; height: 200px; }
+        #klokbeker-3d { width: 60px; height: 90px; border: 2px solid var(--main); border-radius: 20% 20% 45% 45%; transition: all 0.2s; }
+        .vibration { animation: res-shake 0.05s infinite; border-color: var(--els) !important; box-shadow: 0 0 30px var(--els); }
+        @keyframes res-shake { 0% { transform: scale(1); } 50% { transform: scale(1.05) rotate(1deg); } 100% { transform: scale(1); } }
         .terminal { background: rgba(0,0,0,0.8); border: 1px solid var(--muted); padding: 10px; font-size: 0.7rem; color: #888; height: 100px; overflow-y: auto; margin-bottom: 10px; }
         .qr-wrap { background: #fff; padding: 5px; width: 140px; height: 140px; align-self: center; border: 3px solid var(--main); }
         .btn { width: 100%; padding: 12px; background: rgba(230,126,34,0.1); border: 1px solid var(--els); color: var(--els); cursor: pointer; font-weight: bold; text-transform: uppercase; transition: 0.3s;}
         .btn:hover { background: var(--els); color: #000; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn:disabled { opacity: 0.5; }
         .heb-char { font-size: 2rem; color: var(--els); text-align: center; margin: 10px 0; display: none; text-shadow: 0 0 10px var(--els); }
     </style>
 </head>
@@ -49,62 +41,31 @@
             </div>
         </div>
         <div class="panel">
-            <h3>> OMNI-VISUALIZER (TESSERACT)</h3>
+            <h3>> OMNI-VISUALIZER</h3>
             <div class="viz-box">
-                <canvas id="radar" width="240" height="240"></canvas>
+                <canvas id="radar" width="200" height="200"></canvas>
+                <div id="klokbeker-3d"></div>
             </div>
-            <div style="display:flex; justify-content:space-between; margin-top:15px; font-size:0.7rem; color:var(--muted);">
-                <span>TIJD: <span style="color:#fff">150°</span></span>
-                <span>AZIMUTH: <span id="deg-val" style="color:#fff">0°</span></span>
-            </div>
-            <div id="sync-label" style="text-align:center; font-size:0.75rem; font-weight:bold; color:red; margin-top:5px;">SEARCHING AZIMUTH 108°</div>
+            <div id="sync-label" style="text-align:center; font-size:0.75rem; font-weight:bold; color:red; margin-top:15px;">SEARCHING AZIMUTH 108°</div>
         </div>
         <div class="panel">
             <h3>> ELS M2M SYNC</h3>
             <div class="qr-wrap"><img id="qr" style="width:100%" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VORTEX_IDLE" alt="QR"></div>
             <div id="heb-out" class="heb-char">ח ג א ח ב</div>
+            <div style="font-size:0.75rem; color:var(--muted); text-align:center; margin-top: 15px;">
+                AZIMUTH: <span id="deg-val" style="color:#fff">0°</span>
+            </div>
         </div>
     </div>
 
     <script>
         const canvas = document.getElementById('radar'); const ctx = canvas.getContext('2d');
-        const logs = document.getElementById('logs');
+        const logs = document.getElementById('logs'); const beker = document.getElementById('klokbeker-3d');
         const qr = document.getElementById('qr');
         let angle = 0, isActive = false, isLocked = false, audioCtx, osc, gainNode;
 
-        // --- 1. TESSERACT B(6) 3D ENGINE ---
-        class Quaternion {
-            constructor(w=1, x=0, y=0, z=0) { this.w=w; this.x=x; this.y=y; this.z=z; }
-            multiply(q) { return new Quaternion(this.w*q.w - this.x*q.x - this.y*q.y - this.z*q.z, this.w*q.x + this.x*q.w + this.y*q.z - this.z*q.y, this.w*q.y - this.x*q.z + this.y*q.w + this.z*q.x, this.w*q.z + this.x*q.y - this.y*q.x + this.z*q.w); }
-            conjugate() { return new Quaternion(this.w, -this.x, -this.y, -this.z); }
-            rotateVector(v) { let vecQ = new Quaternion(0, v.x, v.y, v.z); let res = this.multiply(vecQ).multiply(this.conjugate()); return { x: res.x, y: res.y, z: res.z }; }
-        }
-        function eulerToQ(p, y, r) {
-            let cy = Math.cos(y*0.5), sy = Math.sin(y*0.5), cp = Math.cos(p*0.5), sp = Math.sin(p*0.5), cr = Math.cos(r*0.5), sr = Math.sin(r*0.5);
-            return new Quaternion(cr*cp*cy+sr*sp*sy, sr*cp*cy-cr*sp*sy, cr*sp*cy+sr*cp*sy, cr*cp*sy-sr*sp*cy);
-        }
-        
-        function getHW(n) { let w=0; for(let i=0; i<6; i++) if(n & (1<<i)) w++; return w; }
-        function getOrbit(n) { let m=n, c=n; for(let i=0;i<6;i++){ c=((c<<1)|(c>>5))&63; if(c<m) m=c; } return m; }
-
-        let tNodes = [], tEdges = [];
-        const tRadii = { 0:0, 63:0, 1:1, 31:1, 3:1.5, 5:0.6, 9:2.0, 15:1.5, 23:0.6, 27:2.0, 7:2.2, 11:1.2, 19:0.5, 21:0.0 };
-        const orbits = {}; 
-        for(let i=0; i<64; i++) { let o = getOrbit(i); if(!orbits[o]) orbits[o] = []; orbits[o].push(i); }
-        
-        for(let i=0; i<64; i++) {
-            let hw = getHW(i); let o = getOrbit(i); let lst = orbits[o]; lst.sort((a,b)=>a-b);
-            let ang = (lst.indexOf(i)/lst.length)*Math.PI*2; let r = tRadii[o]!==undefined ? tRadii[o] : 1.0;
-            tNodes.push({id:i, hw:hw, x:Math.cos(ang)*r, y:(hw-3)*0.8, z:Math.sin(ang)*r});
-        }
-        for(let i=0; i<64; i++) { for(let j=i+1; j<64; j++) if(getHW(i^j)===1) tEdges.push([i,j]); }
-
-        const hwColors = ["#333", "#1976D2", "#00BCD4", "#4CAF50", "#FFC107", "#FF5722", "#E91E63"];
-        // Exacte Tijd Vector (150 Graden)
-        const timeYaw = 150 * (Math.PI / 180);
-
-        // --- 2. SYSTEEM LOGICA ---
         function log(m) { logs.innerHTML += `<br>[${new Date().toLocaleTimeString()}] ${m}`; logs.scrollTop = logs.scrollHeight; }
+
         function startVisualizer() { render(); log("Visualizer Engine Online."); }
 
         async function bootBridge() {
@@ -114,7 +75,6 @@
             osc.type = 'sine'; osc.frequency.setValueAtTime(432, audioCtx.currentTime);
             gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
             osc.connect(gainNode); gainNode.connect(audioCtx.destination); osc.start();
-            
             isActive = true;
             document.getElementById('sys-status').innerText = "SCANNING"; document.getElementById('sys-status').style.color = "#00ffcc";
             document.getElementById('bootBtn').disabled = true; document.getElementById('bootBtn').innerText = "SCANNING ACTIVE";
@@ -122,76 +82,38 @@
         }
 
         function render() {
-            const cx = 120, cy = 120; 
-            ctx.clearRect(0, 0, 240, 240);
-            
-            // A. Radar Ringen
-            ctx.strokeStyle = 'rgba(0, 255, 204, 0.15)'; ctx.lineWidth = 1;
-            for(let r = 30; r < 120; r += 30) { ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke(); }
+            const cx = 100, cy = 100; ctx.clearRect(0, 0, 200, 200);
+            ctx.strokeStyle = '#0a1f24'; ctx.lineWidth = 1;
+            for(let r = 25; r < 100; r += 25) { ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke(); }
             
             if (!isLocked) angle += 0.04;
             const deg = Math.floor((angle * 180 / Math.PI) % 360);
             document.getElementById('deg-val').innerText = deg + "°";
 
-            // B. Radar Sweep
-            ctx.fillStyle = isLocked ? 'rgba(0, 255, 204, 0.25)' : 'rgba(230, 126, 34, 0.15)'; 
-            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, 120, angle, angle + (isLocked ? 0.05 : 0.4)); ctx.fill();
+            ctx.fillStyle = 'rgba(230, 126, 34, 0.15)'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, 100, angle, angle + 0.4); ctx.fill();
 
-            // C. Azimuth Lock Logic (108°)
             if(isActive && deg >= 106 && deg <= 110) {
                 if(!isLocked) {
-                    isLocked = true; 
-                    angle = 108 * (Math.PI / 180); // Snap exact naar 108°
-                    canvas.classList.add('locked');
+                    isLocked = true; angle = 108 * (Math.PI / 180); 
+                    beker.classList.add('vibration');
                     
+                    // DE FIX: Fade-out na 1.5 seconde zodat de irritante toon stopt!
                     if(gainNode) {
                         gainNode.gain.setTargetAtTime(0.2, audioCtx.currentTime, 0.05); // Fade In
                         gainNode.gain.setTargetAtTime(0, audioCtx.currentTime + 1.5, 0.5); // Fade Out na 1.5s
                     }
                     
-                    document.getElementById('sync-label').innerText = "SYNC LOCKED (108°)"; document.getElementById('sync-label').style.color = "#00ffcc";
-                    document.getElementById('osc-stat').innerText = "ON (Pulsed)"; document.getElementById('osc-stat').style.color = "#00ffcc";
+                    document.getElementById('sync-label').innerText = "SYNC LOCKED (108°)"; document.getElementById('sync-label').style.color = "#00ff00";
+                    document.getElementById('osc-stat').innerText = "ON (Pulsed)"; document.getElementById('osc-stat').style.color = "#00ff00";
                     document.getElementById('freq-val').innerText = "432 Hz"; document.getElementById('freq-val').style.color = "#e67e22";
                     document.getElementById('heb-out').style.display = "block";
                     qr.src = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://nl.wikipedia.org/wiki/Sirius_(ster)";
-                    log("SYNC DETECTED: Azimuth 108°. Systeem vergrendeld. Tijd-vector 150° stabiel.");
+                    log("SYNC DETECTED: Sirius 108°. Systeem vergrendeld.");
                     
-                    // Stuur signaal naar moederschip (Module 2)
+                    // Stuur signaal naar moederschip
                     window.parent.postMessage({ type: 'VORTEX_SYNC_LOCKED' }, '*');
                 }
             }
-
-            // D. Teken 3D SHL Tesseract
-            // De hyperkubus draait traag tijdens het scannen, maar lockt op de vaste 150° (timeYaw) bij een sync.
-            let currentYaw = isLocked ? timeYaw : timeYaw + (angle * 0.5);
-            let q = eulerToQ(0.2, currentYaw, 0); 
-            let zoom = 40; // Schaal voor de 240px canvas
-
-            tNodes.forEach(n => {
-                let p = q.rotateVector({x: n.x, y: n.y, z: n.z});
-                let f = 1000 / (1000 - p.z * 100);
-                n.px = cx + p.x * zoom * f; 
-                n.py = cy + p.y * zoom * f; 
-                n.pz = p.z;
-            });
-
-            // Ribben
-            ctx.lineWidth = 1;
-            tEdges.forEach(e => {
-                let n1 = tNodes[e[0]], n2 = tNodes[e[1]];
-                if(n1.pz > 9 || n2.pz > 9) return;
-                ctx.strokeStyle = isLocked ? 'rgba(0, 229, 255, 0.4)' : 'rgba(255, 255, 255, 0.1)';
-                ctx.beginPath(); ctx.moveTo(n1.px, n1.py); ctx.lineTo(n2.px, n2.py); ctx.stroke();
-            });
-
-            // Knooppunten (Nodes)
-            let sortedNodes = [...tNodes].sort((a,b) => b.pz - a.pz);
-            sortedNodes.forEach(n => {
-                if(n.pz > 9) return;
-                ctx.fillStyle = isLocked ? hwColors[n.hw] : '#555';
-                ctx.beginPath(); ctx.arc(n.px, n.py, isLocked ? 2.5 : 1.5, 0, Math.PI*2); ctx.fill();
-            });
-
             requestAnimationFrame(render);
         }
         window.onload = startVisualizer;
