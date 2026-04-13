@@ -3,38 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VORTEX v130.0 // AXIAL INVERSION</title>
+    <title>VORTEX v136.0 // LONGITUDINAL FLIP</title>
     <style>
         :root {
-            --sirius: #ff33aa; --leo: #ff9900; --main: #00ffcc; --bg: #ffffff;
+            --sirius: #ff33aa; --main: #00ffcc; --bg: #ffffff;
             --font: 'Courier New', monospace;
         }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: var(--font); color: #000; }
         
-        .interface {
-            position: absolute; bottom: 20px; left: 20px; z-index: 10;
-            width: 380px; background: rgba(255, 255, 255, 0.98); border: 2px solid #000;
-            padding: 15px; box-shadow: 8px 8px 0px #000;
+        .ui-panel {
+            position: absolute; bottom: 20px; right: 20px; z-index: 10;
+            width: 320px; background: rgba(255, 255, 255, 0.95); border: 2px solid #000;
+            padding: 15px; box-shadow: -8px 8px 0px #000;
         }
 
-        .axis-tag { background: #000; color: #fff; padding: 10px; text-align: center; font-weight: bold; margin-bottom: 12px; }
-        .data-stream { font-size: 0.75rem; line-height: 1.6; border-top: 1px solid #000; padding-top: 12px; }
-        .label-box { display: inline-block; padding: 2px 8px; font-weight: bold; background: #000; color: #fff; margin-bottom: 5px; text-transform: uppercase; }
+        .flip-header { background: #000; color: #fff; padding: 8px; text-align: center; font-weight: bold; text-transform: uppercase; }
+        .data-stream { font-size: 0.75rem; line-height: 1.5; border-top: 1px solid #000; padding-top: 10px; margin-top: 10px; }
+        .focus-label { font-weight: bold; color: var(--sirius); }
         
         canvas { display: block; width: 100vw; height: 100vh; }
     </style>
 </head>
 <body>
 
-    <div class="interface">
-        <div class="axis-tag">STATUS: AXIAL INVERSION (S-TOP)</div>
+    <div class="ui-panel">
+        <div class="flip-header">FLIP: OOST-WEST 180°</div>
         <div class="data-stream">
-            <span class="label-box">Oriëntatie: Zuid-Top / Oost-Links</span><br>
+            <b>MODUS:</b> Longitudinale Inversie<br>
+            <span class="focus-label">Sirius-Vector:</span> Nu Linkerboven (Inverted East)<br>
             <b>NEXUS:</b> De Mees 27, Laren<br>
-            <b style="color:var(--sirius);">SIRIUS POOL:</b> 288° (Gekanteld)<br>
-            <b style="color:var(--main);">PENTAGON VECTOR:</b> Inverted Down-Right<br>
             <hr>
-            <i style="font-size:0.65rem;">> De-ionisatie in omgekeerde as-rotatie...<br>> Geometrische resonantie stabiel op 432Hz.</i>
+            <i style="font-size:0.65rem;">> Horizontale as gespiegeld...<br>> Verticale as (S-Top) behouden.</i>
         </div>
     </div>
 
@@ -45,8 +44,8 @@
         const ctx = canvas.getContext('2d');
         let time = 0;
         
-        const flippedSiriusAngle = 288 * (Math.PI / 180);
-        const activeSenderAngle = 108 * (Math.PI / 180);
+        // Sirius Azimuth aangepast voor de nieuwe links-georiënteerde Oost
+        const targetAngle = 225 * (Math.PI / 180); // Richting linkerboven
 
         function project4D(x, y, z, w, pitch, yaw) {
             let x4 = x * Math.cos(Math.PI/4) - w * Math.sin(Math.PI/4);
@@ -59,11 +58,11 @@
             let xA = x4 * cosY - zA * sinY;
             let zB = x4 * sinY + zA * cosY;
             
-            let f = 800 / (800 + zB + w4);
+            let f = 900 / (900 + zB + w4);
 
-            // --- AXIAL INVERSION LOGIC ---
-            // 1. Oost-Links: xA spiegelen (-xA)
-            // 2. Zuid-Top: yA spiegelen (-yA)
+            // --- VORTEX CALIBRATION v136 ---
+            // 1. Oost-West 180° draai: xA wordt -xA (West-Rechts / Oost-Links)
+            // 2. Zuid-Noord behouden (S-Top): yA blijft -yA (van vorige inversie)
             return { x: -xA * f, y: -yA * f, s: f };
         }
 
@@ -76,11 +75,10 @@
 
             const size = 180;
             const nodes = [];
-            // Pitch en Yaw aangepast voor de nieuwe as-beleving
             const pitch = 0.5;
-            const yaw = time * 0.2;
+            const yaw = time * 0.3;
 
-            // 1. Hypercube (Leo-Mapping)
+            // 1. Inverted Tesseract
             for (let i = 0; i < 16; i++) {
                 let x = (i & 1 ? 1 : -1) * size;
                 let y = (i & 2 ? 1 : -1) * size;
@@ -99,22 +97,25 @@
                 });
             });
 
-            // 2. Compas Indicatoren (Inverted)
+            // 2. Sirius-Anker: LINKERBOVENKANT (Door Oost-Flip)
+            const sx = Math.cos(targetAngle) * 400; 
+            const sy = Math.sin(targetAngle) * 400;
+
+            ctx.strokeStyle = "var(--sirius)"; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + sx, cy + sy); ctx.stroke();
+            
+            ctx.fillStyle = "var(--sirius)"; ctx.beginPath(); ctx.arc(cx + sx, cy + sy, 10, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#000"; ctx.font = "bold 12px Courier New";
+            ctx.fillText("SIRIUS (TOP-L)", cx + sx + 20, cy + sy + 5);
+
+            // 3. Directional Labels (180° Longitude Flip)
             ctx.font = "bold 16px Courier New"; ctx.fillStyle = "#000";
-            ctx.fillText("ZUID (TOP)", cx - 50, 40);
+            ctx.fillText("ZUID (TOP)", cx - 45, 40);
             ctx.fillText("NOORD (BOTTOM)", cx - 60, canvas.height - 30);
             ctx.fillText("OOST (L)", 30, cy);
             ctx.fillText("WEST (R)", canvas.width - 100, cy);
 
-            // 3. Sirius Inversion Vector (288°)
-            // Omdat Y gespiegeld is, draait de visuele hoek om
-            ctx.strokeStyle = "var(--sirius)"; ctx.setLineDash([10, 5]);
-            ctx.beginPath(); ctx.moveTo(cx, cy);
-            ctx.lineTo(cx + Math.cos(flippedSiriusAngle)*-400, cy + Math.sin(flippedSiriusAngle)*-400);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // 4. 34850 Halo (48 nodes)
+            // 4. Halo (48 nodes)
             const haloR = Math.sqrt(34850);
             for(let i=0; i<48; i++) {
                 let a = i * (Math.PI * 2 / 48);
