@@ -3,145 +3,562 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VORTEX v110.27 // OMNI-NEXUS MASTER DIRECTORY</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <title>VORTEX v123.0 // B(6) HARMONIC DIRECTORY</title>
     <style>
         :root {
-            --bg-color: #050505; --grid-color: #0a1f24; --text-main: #00ffcc;
-            --text-accent: #ff9900; --text-muted: #4a7c7c; --border-color: #00ffcc44;
-            --color-gis: #00ff00; --font-mono: 'Courier New', monospace;
+            --bg-dark: #030303; 
+            --panel-bg: #0a0a0a; 
+            --border-color: #222;
+            --accent-cyan: #00e5ff; 
+            --accent-orange: #ff6a00; 
+            --accent-gold: #f5d400; 
+            --text-muted: #666;
+            --font-mono: 'Courier New', Courier, monospace;
         }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg-color); color: var(--text-main); font-family: var(--font-mono); margin: 0; overflow: hidden; height: 100vh; }
-        body::after { content: " "; display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 9999; background-size: 100% 2px, 3px 100%; pointer-events: none; }
-        .bg-grid { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px); background-size: 20px 20px; z-index: -1; opacity: 0.6; }
-        .layout-wrapper { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
-        .sidebar { position: fixed; top: 0; left: -100%; width: 85vw; max-width: 360px; height: 100vh; background: rgba(2, 5, 8, 0.98); border-right: 1px solid var(--border-color); padding: 20px; overflow-y: auto; z-index: 1000; transition: left 0.3s; box-shadow: 5px 0 30px rgba(0,0,0,0.9); }
-        .sidebar.open { left: 0; }
-        .main-panel { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 20px; overflow-y: auto; gap: 20px; }
-        .visual-wrapper { position: relative; width: 100%; max-width: 600px; aspect-ratio: 1/1; flex-shrink: 0; }
-        canvas { background: radial-gradient(circle, #111 0%, #000 100%); border-radius: 50%; width: 100%; height: 100%; display: block; border: 1px solid var(--border-color); cursor: crosshair; }
-        .overlay-grid { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #010203; border-radius: 12px; padding: 2%; grid-template-columns: repeat(8, 1fr); gap: 1.5%; border: 1px solid var(--text-muted); }
-        .matrix-cell { background: rgba(0, 255, 204, 0.05); border: 1px solid rgba(0, 255, 204, 0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; cursor: pointer; color: var(--text-muted); font-size: 0.7rem; }
-        .matrix-cell.target { background: rgba(0, 255, 204, 0.4); border-color: var(--text-main); box-shadow: 0 0 15px var(--text-main); color: #fff; }
-        .detail-box { width: 100%; max-width: 600px; border: 1px solid var(--text-muted); padding: 20px; background: rgba(0, 0, 0, 0.85); border-radius: 8px; }
-        .data-row { display: flex; justify-content: space-between; margin-top: 8px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px; font-size: 0.85rem; }
-        .aes-btn { background: rgba(0, 229, 255, 0.1); border: 1px solid var(--text-main); color: var(--text-main); padding: 10px; cursor: pointer; width: 100%; font-family: var(--font-mono); font-weight: bold; margin-top: 10px; border-radius: 4px; }
-        @media (min-width: 1024px) { .layout-wrapper { flex-direction: row; } .sidebar { position: relative; left: 0; width: 380px; } .main-panel { flex-direction: row; align-items: flex-start; justify-content: center; } }
+        
+        * { box-sizing: border-box; }
+        
+        body { 
+            background: var(--bg-dark); 
+            color: #e0e0e0; 
+            font-family: var(--font-mono); 
+            margin: 0; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            background-image: radial-gradient(circle at center, #111 0%, #000 100%);
+        }
+
+        header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 10px 20px; 
+            border-bottom: 1px solid var(--accent-orange); 
+            background: rgba(0,0,0,0.9); 
+            z-index: 10; 
+        }
+
+        .sys-title { color: var(--accent-gold); font-weight: bold; font-size: 1.1em; letter-spacing: 2px;}
+        .sys-clock { color: var(--accent-cyan); }
+
+        main { 
+            display: flex; 
+            flex: 1; 
+            overflow: hidden; 
+        }
+
+        .sidebar { 
+            width: 360px; 
+            background: rgba(10, 10, 10, 0.9); 
+            border-right: 1px solid var(--border-color); 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            z-index: 20; 
+        }
+
+        .section-title { 
+            color: var(--accent-orange); 
+            font-size: 0.85em; 
+            text-transform: uppercase; 
+            border-bottom: 1px dashed #444; 
+            padding-bottom: 5px; 
+            margin-bottom: 10px; 
+            letter-spacing: 1px;
+        }
+
+        .directory-list {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            border: 1px solid #222;
+            background: #050505;
+        }
+
+        .dir-item {
+            display: grid;
+            grid-template-columns: 40px 70px 1fr;
+            padding: 8px 10px;
+            border-bottom: 1px solid #1a1a1a;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: 0.2s;
+            color: #aaa;
+            align-items: center;
+        }
+
+        .dir-item:hover { background: rgba(0, 229, 255, 0.05); color: #fff; }
+        .dir-item.active { 
+            background: rgba(245, 212, 0, 0.1); 
+            border-left: 3px solid var(--accent-gold); 
+            color: var(--accent-gold); 
+        }
+        
+        .dir-id { font-weight: bold; }
+        .dir-bin { color: var(--text-muted); }
+        .dir-freq { text-align: right; color: var(--accent-cyan); }
+        .dir-item.active .dir-bin { color: #fff; }
+
+        .control-group { margin-bottom: 10px; }
+        .control-group label { 
+            font-size: 0.75em; 
+            color: var(--text-muted); 
+            display: flex; 
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        input[type="range"] { 
+            -webkit-appearance: none; 
+            width: 100%; 
+            background: #111; 
+            height: 4px; 
+            outline: none; 
+            border: 1px solid #333;
+        }
+
+        input[type="range"]::-webkit-slider-thumb { 
+            -webkit-appearance: none; 
+            width: 12px; 
+            height: 12px; 
+            background: var(--accent-cyan); 
+            cursor: pointer; 
+        }
+
+        button { 
+            background: rgba(0, 229, 255, 0.05); 
+            color: var(--accent-cyan); 
+            border: 1px solid var(--accent-cyan); 
+            padding: 10px; 
+            font-family: var(--font-mono); 
+            cursor: pointer; 
+            font-size: 0.8em; 
+            transition: 0.2s; 
+            text-transform: uppercase; 
+            font-weight: bold; 
+            width: 100%;
+        }
+
+        button:hover { background: rgba(0, 229, 255, 0.2); }
+        button.active { background: var(--accent-gold); color: #000; border-color: var(--accent-gold); }
+
+        .canvas-wrapper { 
+            flex: 1; 
+            position: relative; 
+            cursor: crosshair; 
+        }
+
+        canvas { 
+            width: 100%; 
+            height: 100%; 
+            display: block; 
+        }
+
+        #tooltip { 
+            position: absolute; 
+            padding: 10px 15px; 
+            background: rgba(0,0,0,0.9); 
+            border: 1px solid var(--accent-cyan); 
+            color: #fff; 
+            font-size: 0.8em; 
+            pointer-events: none; 
+            display: none; 
+            z-index: 100; 
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            main { flex-direction: column; }
+            .sidebar { width: 100%; max-height: 50vh; border-right: none; border-bottom: 1px solid var(--border-color); }
+        }
     </style>
 </head>
 <body>
-    <div class="bg-grid"></div>
-    <div class="layout-wrapper">
-        <aside class="sidebar" id="mainMenu">
-            <h2>> DIRECTORY (ASSETS)</h2>
-            <ul class="tree-root">
-                <li><span class="caret">OMNI-NEXUS</span>
-                    <ul class="nested">
-                        <li class="node" onclick="loadModule('observatory')">├─ Observatory [Live 3D]</li>
-                        <li class="node" onclick="loadModule('shl_tesseract')" style="font-weight:bold; color:var(--text-accent);">├─ B(6,2) SHL Tesseract</li>
-                        <li class="node" onclick="loadModule('arcgis_field')" style="color:var(--color-gis);">└─ ArcGIS Telemetrie</li>
-                    </ul>
-                </li>
-            </ul>
-        </aside>
-        <main class="main-panel">
-            <div class="visual-wrapper">
-                <canvas id="vortexCanvas" width="600" height="600"></canvas>
-                <div id="tesseract-grid" class="overlay-grid"></div>
-            </div>
-            <div class="info-wrapper">
-                <div id="detail-content" class="detail-box">
-                    <h3 style="color:var(--text-main); margin-top:0;">> SYSTEEM ONLINE...</h3>
-                    <p style="font-size:0.8rem; color:#888;">Selecteer een module om de matrix te laden.</p>
+
+    <header>
+        <div class="sys-title">> VORTEX // B(6) DIRECTORY</div>
+        <div class="sys-clock" id="clock">00:00:00</div>
+    </header>
+
+    <main>
+        <aside class="sidebar">
+            <div class="section-title">Harmonische Nodes (43.2 Hz)</div>
+            
+            <div class="directory-list" id="directory-container">
                 </div>
+
+            <div class="section-title">Ruimtelijke Telemetrie</div>
+            <div class="control-group">
+                <label><span>Verticale Spreiding (Y-As)</span> <span id="val-vspread" style="color:var(--accent-gold)">1.5x</span></label>
+                <input type="range" id="ctrl-vspread" min="50" max="300" value="150">
             </div>
-        </main>
-    </div>
+            <div class="control-group">
+                <label><span>Ring Spreiding (X/Z)</span> <span id="val-rspread" style="color:var(--accent-gold)">1.5x</span></label>
+                <input type="range" id="ctrl-rspread" min="50" max="300" value="150">
+            </div>
+
+            <button id="btn-auto-rot" class="active" style="margin-top: 5px;">AUTOMATISCHE ROTATIE: AAN</button>
+            <button id="btn-reset" style="margin-top: 5px; border-color: #444; color: #888;">CLEAR FOCUS</button>
+        </aside>
+
+        <div class="canvas-wrapper" id="canvas-container">
+            <canvas id="vortexCanvas"></canvas>
+            <div id="tooltip">
+                <div style="color:var(--accent-gold); font-weight:bold; font-size:1.2em; margin-bottom:5px; border-bottom: 1px solid #333; padding-bottom: 4px;" id="tt-freq">0.0 HZ</div>
+                <div style="color:var(--accent-cyan); margin-bottom:2px;" id="tt-bin">000000</div>
+                <div>NODE ID: <span id="tt-val" style="color:#fff">0</span></div>
+                <div>HAMMING: <span id="tt-hw" style="color:#aaa">0</span></div>
+                <div>SHL ORBIT: <span id="tt-orb" style="color:#aaa">0</span></div>
+            </div>
+        </div>
+    </main>
 
     <script>
-        // --- 1. DATA & STATE ---
-        let currentModule = null, audioCtx, animFrame;
-        const state3D = { yaw: 0, pitch: 0.3, isFlipped: false, autoRot: true };
-        const qFlip180 = { w: 0, x: 1, y: 0, z: 0 }; // Quaternion 180 flip
+        const canvas = document.getElementById('vortexCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        const tooltip = document.getElementById('tooltip');
+        const directoryContainer = document.getElementById('directory-container');
 
-        // --- 2. TESSERACT ENGINE ---
-        function buildTesseract() {
-            const grid = document.getElementById('tesseract-grid');
-            grid.innerHTML = '';
+        // Data State
+        const activeNodes = [4, 5, 10, 16, 17, 20, 21, 22, 28, 34, 40, 52];
+        const baseFreq = 43.2;
+
+        // --- 3D MATH ENGINE ---
+        class Quaternion {
+            constructor(w=1, x=0, y=0, z=0) { this.w=w; this.x=x; this.y=y; this.z=z; }
+            multiply(q) {
+                return new Quaternion(
+                    this.w*q.w - this.x*q.x - this.y*q.y - this.z*q.z,
+                    this.w*q.x + this.x*q.w + this.y*q.z - this.z*q.y,
+                    this.w*q.y - this.x*q.z + this.y*q.w + this.z*q.x,
+                    this.w*q.z + this.x*q.y - this.y*q.x + this.z*q.w
+                );
+            }
+            conjugate() { return new Quaternion(this.w, -this.x, -this.y, -this.z); }
+            rotateVector(v) {
+                let vecQ = new Quaternion(0, v.x, v.y, v.z);
+                let res = this.multiply(vecQ).multiply(this.conjugate());
+                return { x: res.x, y: res.y, z: res.z };
+            }
+        }
+
+        function eulerToQ(pitch, yaw, roll) {
+            let cy = Math.cos(yaw*0.5), sy = Math.sin(yaw*0.5);
+            let cp = Math.cos(pitch*0.5), sp = Math.sin(pitch*0.5);
+            let cr = Math.cos(roll*0.5), sr = Math.sin(roll*0.5);
+            return new Quaternion(
+                cr*cp*cy + sr*sp*sy, sr*cp*cy - cr*sp*sy,
+                cr*sp*cy + sr*cp*sy, cr*cp*sy - sr*sp*cy
+            );
+        }
+
+        // --- B(6) LOGICA ---
+        function getHW(n) { let w=0; for(let i=0; i<6; i++) if(n & (1<<i)) w++; return w; }
+        function shl(n) { return ((n << 1) | (n >> 5)) & 63; }
+        function getOrbit(n) {
+            let min = n, curr = n;
+            for(let i=0; i<6; i++) { curr = shl(curr); if(curr < min) min = curr; }
+            return min;
+        }
+        function toBin(n) { return n.toString(2).padStart(6, '0'); }
+
+        const orbits = {};
+        for(let i=0; i<64; i++) { 
+            let o = getOrbit(i); 
+            if(!orbits[o]) orbits[o] = []; 
+            orbits[o].push(i); 
+        }
+
+        let nodes = [];
+        const edges = [];
+        
+        const baseRadii = {
+            0: 0.0, 63: 0.0, 
+            1: 1.0, 31: 1.0, 
+            3: 1.5, 5: 0.6, 9: 2.0, 
+            15: 1.5, 23: 0.6, 27: 2.0, 
+            7: 2.2, 11: 1.2, 19: 0.5, 21: 0.0 
+        };
+
+        function generateGeometry() {
+            nodes = [];
             for(let i=0; i<64; i++) {
-                let cell = document.createElement('div');
-                cell.className = 'matrix-cell';
-                cell.id = `node-${i}`;
-                cell.innerText = i;
-                cell.onclick = () => scanTesseract(i);
-                grid.appendChild(cell);
+                let hw = getHW(i); 
+                let o = getOrbit(i); 
+                let orbitList = orbits[o];
+                orbitList.sort((a,b) => a-b);
+                
+                let angle = (orbitList.indexOf(i) / orbitList.length) * Math.PI * 2;
+                let radius = baseRadii[o] !== undefined ? baseRadii[o] : 1.0;
+                
+                nodes.push({
+                    id: i, hw: hw, orbit: o, bin: toBin(i),
+                    freq: (i * baseFreq).toFixed(1),
+                    baseX: Math.cos(angle) * radius,
+                    baseY: (hw - 3) * 0.8, // Centreer rond 0
+                    baseZ: Math.sin(angle) * radius,
+                    projX: 0, projY: 0, projZ: 0, scale: 1
+                });
             }
         }
 
-        function scanTesseract(id) {
-            const freq = (id * 43.2).toFixed(1);
-            document.querySelectorAll('.matrix-cell').forEach(c => c.classList.remove('target'));
-            document.getElementById(`node-${id}`).classList.add('target');
+        generateGeometry();
+
+        // Verbind Hamming-afstand 1
+        for(let i=0; i<64; i++) {
+            for(let j=i+1; j<64; j++) {
+                if(getHW(i^j) === 1) edges.push([i,j]);
+            }
+        }
+
+        // --- STATE & CONTROLS ---
+        let state = {
+            cam: { pitch: 0.3, yaw: 0, roll: 0, zoom: 120 },
+            vSpread: 1.5,
+            rSpread: 1.5,
+            autoRot: true,
+            hoverNode: null,
+            focusedNode: null,
+            isDragging: false,
+            mouse: { x: 0, y: 0 }
+        };
+
+        // Populate Directory List
+        function buildDirectory() {
+            directoryContainer.innerHTML = '';
+            activeNodes.forEach(id => {
+                const node = nodes[id];
+                const div = document.createElement('div');
+                div.className = 'dir-item';
+                if(state.focusedNode === id) div.classList.add('active');
+                
+                div.innerHTML = `
+                    <span class="dir-id">${id}</span>
+                    <span class="dir-bin">${node.bin}</span>
+                    <span class="dir-freq">${node.freq} Hz</span>
+                `;
+                
+                div.onclick = () => {
+                    state.focusedNode = state.focusedNode === id ? null : id; // Toggle
+                    buildDirectory(); // Re-render list
+                };
+                
+                directoryContainer.appendChild(div);
+            });
+        }
+        buildDirectory();
+
+        document.getElementById('ctrl-vspread').oninput = (e) => { 
+            state.vSpread = e.target.value / 100; 
+            document.getElementById('val-vspread').innerText = state.vSpread.toFixed(1) + 'x'; 
+        };
+        document.getElementById('ctrl-rspread').oninput = (e) => { 
+            state.rSpread = e.target.value / 100; 
+            document.getElementById('val-rspread').innerText = state.rSpread.toFixed(1) + 'x'; 
+        };
+
+        document.getElementById('btn-auto-rot').onclick = function() { 
+            state.autoRot = !state.autoRot; 
+            this.classList.toggle('active'); 
+            this.innerText = `AUTOMATISCHE ROTATIE: ${state.autoRot ? 'AAN' : 'UIT'}`; 
+        };
+
+        document.getElementById('btn-reset').onclick = function() {
+            state.focusedNode = null;
+            buildDirectory();
+        }
+
+        // --- RENDER ENGINE ---
+        function project(v) {
+            let q = eulerToQ(state.cam.pitch, state.cam.yaw, state.cam.roll);
+            let scaledV = { x: v.x * state.rSpread, y: v.y * state.vSpread, z: v.z * state.rSpread };
+            let rotated = q.rotateVector(scaledV);
+            let factor = 1000 / (1000 - rotated.z * 100);
+            return { 
+                x: rotated.x * state.cam.zoom * factor, 
+                y: rotated.y * state.cam.zoom * factor, 
+                z: rotated.z, 
+                f: factor 
+            };
+        }
+
+        const hwColors = ["#333", "#1976D2", "#00BCD4", "#4CAF50", "#FFC107", "#FF5722", "#E91E63"];
+
+        function draw() {
+            canvas.width = container.clientWidth; 
+            canvas.height = container.clientHeight;
+            const cx = canvas.width / 2, cy = canvas.height / 2;
             
-            // Audio trigger
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.frequency.value = freq;
-            gain.gain.setTargetAtTime(0.1, audioCtx.currentTime, 0.05);
-            gain.gain.setTargetAtTime(0, audioCtx.currentTime + 1.0, 0.2);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if(state.autoRot) state.cam.yaw += 0.003;
 
-            // UI Update
-            let ratiosHTML = '';
-            for(let i=1; i<=10; i++) {
-                ratiosHTML += `<div class="data-row"><span>N-${i}:</span><span>${(i*43.2).toFixed(1)} Hz</span></div>`;
-            }
+            // Projectie
+            nodes.forEach(n => {
+                let p = project({ x: n.baseX, y: n.baseY, z: n.baseZ });
+                n.projX = cx + p.x; n.projY = cy + p.y; n.projZ = p.z; n.scale = p.f;
+            });
 
-            document.getElementById('detail-content').innerHTML = `
-                <h3 style="color:var(--text-accent);">> B(6,2) SHL TESSERACT</h3>
-                <div class="data-row"><span>NODE SELECTOR:</span><span>#${id}</span></div>
-                <div class="data-row"><span>FORMULE:</span><span>${id} x 43.2 Hz</span></div>
-                <div class="data-row" style="border:none;"><div class="data-label">RESULTEREND:</div><div class="data-value" style="font-size:1.5rem; color:#fff;">${freq} Hz</div></div>
-                <details style="margin-top:15px; background:rgba(255,153,0,0.1); padding:10px; border:1px solid var(--text-accent); cursor:pointer;">
-                    <summary style="color:var(--text-accent);">[+] NODE 1 t/m 10 (Ratio's)</summary>
-                    <div style="margin-top:10px; font-size:0.75rem;">${ratiosHTML}</div>
-                </details>
-            `;
+            // Teken Ribben
+            ctx.lineWidth = 1;
+            edges.forEach(edge => {
+                let n1 = nodes[edge[0]], n2 = nodes[edge[1]];
+                if(n1.projZ > 9 || n2.projZ > 9) return; 
+                
+                let isHovered = (state.hoverNode === edge[0] || state.hoverNode === edge[1]);
+                let isFocused = (state.focusedNode === edge[0] || state.focusedNode === edge[1]);
+                
+                let opacity = 0.15;
+                if(state.focusedNode !== null) {
+                    opacity = isFocused ? 0.6 : 0.02; // Dim ongefocusde lijnen zwaar
+                } else if (isHovered) {
+                    opacity = 0.8;
+                }
+
+                ctx.strokeStyle = (isHovered || isFocused) ? `rgba(0, 229, 255, ${opacity})` : `rgba(255, 255, 255, ${opacity})`;
+                ctx.lineWidth = (isHovered || isFocused) ? 2 : 1;
+                
+                ctx.beginPath(); 
+                ctx.moveTo(n1.projX, n1.projY); 
+                ctx.lineTo(n2.projX, n2.projY); 
+                ctx.stroke();
+            });
+
+            // Teken Nodes (Z-sort)
+            let sortedNodes = [...nodes].sort((a,b) => b.projZ - a.projZ);
+            sortedNodes.forEach(n => {
+                if(n.projZ > 9) return;
+                
+                let isHovered = (state.hoverNode === n.id);
+                let isFocused = (state.focusedNode === n.id);
+                let radius = (isHovered || isFocused ? 7 : 3.5) * n.scale;
+                
+                let baseColor = hwColors[n.hw];
+                
+                // Focus Dimming Logic
+                if (state.focusedNode !== null && !isFocused) {
+                    ctx.fillStyle = "rgba(50, 50, 50, 0.3)";
+                    ctx.shadowBlur = 0;
+                } else if (isFocused) {
+                    ctx.fillStyle = "#fff";
+                    ctx.shadowBlur = 20; 
+                    ctx.shadowColor = "var(--accent-gold)";
+                } else if (isHovered) {
+                    ctx.fillStyle = "#fff";
+                    ctx.shadowBlur = 15; 
+                    ctx.shadowColor = "var(--accent-cyan)";
+                } else {
+                    // Is het een active directory node?
+                    if(activeNodes.includes(n.id)) {
+                        ctx.fillStyle = baseColor;
+                        ctx.shadowBlur = 8;
+                        ctx.shadowColor = baseColor;
+                    } else {
+                        ctx.fillStyle = "rgba(100, 100, 100, 0.5)";
+                        ctx.shadowBlur = 0;
+                    }
+                }
+                
+                ctx.beginPath(); 
+                ctx.arc(n.projX, n.projY, Math.max(1, radius), 0, Math.PI*2); 
+                ctx.fill();
+            });
+            
+            ctx.shadowBlur = 0;
+            requestAnimationFrame(draw);
         }
 
-        // --- 3. CORE LOGICA ---
-        function loadModule(id) {
-            currentModule = id;
-            const canvas = document.getElementById('vortexCanvas');
-            const grid = document.getElementById('tesseract-grid');
-            grid.style.display = (id === 'shl_tesseract') ? 'grid' : 'none';
-            canvas.style.display = (id === 'shl_tesseract') ? 'none' : 'block';
-
-            if(id === 'shl_tesseract') {
-                buildTesseract();
-                scanTesseract(39); // Start op jouw node
-            } else if(id === 'observatory') {
-                renderObservatory();
-            }
+        // --- INTERACTIE ---
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
-        function renderObservatory() {
-            const ctx = document.getElementById('vortexCanvas').getContext('2d');
-            function loop() {
-                if(currentModule !== 'observatory') return;
-                ctx.clearRect(0,0,600,600);
-                // Dynamische kompas/radar tekening hier...
-                ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.arc(300, 300, 200, 0, Math.PI*2); ctx.stroke();
-                requestAnimationFrame(loop);
+        container.addEventListener('mousemove', (e) => {
+            const pos = getMousePos(e);
+            
+            if (!state.isDragging) {
+                let closest = null, minDist = 15;
+                nodes.forEach(n => {
+                    if(n.projZ > 9) return;
+                    let d = Math.hypot(n.projX - pos.x, n.projY - pos.y);
+                    if(d < minDist) { minDist = d; closest = n.id; }
+                });
+                
+                state.hoverNode = closest;
+                
+                if (closest !== null) {
+                    const n = nodes[closest];
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (pos.x + 20) + 'px';
+                    tooltip.style.top = (pos.y + 20) + 'px';
+                    
+                    document.getElementById('tt-freq').innerText = n.freq + " HZ";
+                    document.getElementById('tt-bin').innerText = n.bin;
+                    document.getElementById('tt-val').innerText = n.id;
+                    document.getElementById('tt-hw').innerText = n.hw;
+                    document.getElementById('tt-orb').innerText = n.orbit;
+                    canvas.style.cursor = 'pointer';
+                } else {
+                    tooltip.style.display = 'none';
+                    canvas.style.cursor = 'crosshair';
+                }
             }
-            loop();
-        }
 
-        loadModule('shl_tesseract'); // Init
+            if (state.isDragging) {
+                let dx = pos.x - state.mouse.x;
+                let dy = pos.y - state.mouse.y;
+                state.cam.yaw += dx * 0.005;
+                state.cam.pitch += dy * 0.005;
+                state.mouse = pos;
+            }
+        });
+
+        container.addEventListener('mousedown', (e) => {
+            state.isDragging = true;
+            state.mouse = getMousePos(e);
+        });
+        window.addEventListener('mouseup', () => { state.isDragging = false; });
+
+        // Touch support
+        container.addEventListener('touchstart', (e) => {
+            state.isDragging = true;
+            state.mouse = getMousePos(e);
+        }, {passive: false});
+        
+        container.addEventListener('touchmove', (e) => {
+            if(state.isDragging) {
+                e.preventDefault();
+                const pos = getMousePos(e);
+                let dx = pos.x - state.mouse.x;
+                let dy = pos.y - state.mouse.y;
+                state.cam.yaw += dx * 0.005;
+                state.cam.pitch += dy * 0.005;
+                state.mouse = pos;
+            }
+        }, {passive: false});
+        
+        window.addEventListener('touchend', () => { state.isDragging = false; });
+
+        // Click to focus via canvas
+        canvas.addEventListener('click', () => {
+            if(state.hoverNode !== null) {
+                state.focusedNode = state.focusedNode === state.hoverNode ? null : state.hoverNode;
+                buildDirectory();
+            }
+        });
+
+        // Clock Update
+        setInterval(() => { 
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" }); 
+        }, 1000);
+
+        draw();
     </script>
 </body>
 </html>

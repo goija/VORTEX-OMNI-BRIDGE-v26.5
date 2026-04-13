@@ -124,11 +124,22 @@
         .lore-box h4 { color: var(--text-accent); margin: 15px 0 8px 0; text-transform: uppercase;}
         .lore-box ul { margin: 0; padding-left: 20px; color: #aaa;}
 
+        /* --- 3D TESSERACT DIRECTORY CSS --- */
+        #tess-tooltip { 
+            position: absolute; padding: 10px 15px; background: rgba(0,0,0,0.9); 
+            border: 1px solid var(--text-accent); color: #fff; font-size: 0.8em; 
+            pointer-events: none; display: none; z-index: 100; box-shadow: 0 0 15px rgba(255, 153, 0, 0.3);
+        }
+        .dir-item {
+            display: grid; grid-template-columns: 40px 70px 1fr; padding: 8px 10px;
+            border-bottom: 1px solid #1a1a1a; cursor: pointer; font-size: 0.85em;
+            color: #aaa; align-items: center; transition: 0.2s;
+        }
+        .dir-item:hover { background: rgba(255, 153, 0, 0.1); color: #fff; }
+        .dir-item.active { background: rgba(255, 153, 0, 0.2); border-left: 3px solid var(--text-accent); color: var(--text-accent); }
+
         /* --- MODULE SPECIFIEKE CSS OVERLAYS --- */
-        
-        /* 6D B(6) MATRIX & TESSERACT */
-        #matrix-grid, #tesseract-grid { grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 1.5%; border: 1px solid var(--text-muted);}
-        #tesseract-grid { border-color: var(--text-accent); }
+        #matrix-grid { grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 1.5%; border: 1px solid var(--text-muted);}
         .matrix-cell { background: rgba(0, 255, 204, 0.05); border: 1px solid rgba(0, 255, 204, 0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.2s; cursor: crosshair;}
         .m-bin { font-weight: bold; font-size: clamp(0.5rem, 1.5vw, 1rem); color: var(--text-muted); }
         .m-dec { font-size: clamp(0.4rem, 1vw, 0.7rem); color: rgba(255,255,255,0.3); margin-top: 2px; }
@@ -306,13 +317,14 @@
             <div class="visual-wrapper">
                 <canvas id="vortexCanvas" width="600" height="600"></canvas>
                 
+                <div id="tess-tooltip"></div>
+                
                 <div id="matrix-grid" class="overlay-grid"></div>
                 <div id="els-grid" class="overlay-grid"></div>
                 <div id="hexagram-grid" class="overlay-grid"></div>
                 <div id="unicode-grid" class="overlay-grid"></div>
                 <div id="omnicipher-grid" class="overlay-grid"></div>
                 <div id="luopan-grid" class="overlay-grid"></div>
-                <div id="tesseract-grid" class="overlay-grid"></div>
                 
                 <div id="aes-grid" class="overlay-grid" style="display: none;">
                     <div class="aes-title">> AES-256 / RIJNDAEL DECRYPTOR</div>
@@ -348,9 +360,37 @@
             }
         };
 
-        // Globals for mirrors
+        // Advanced Quaternion voor 3D Engine (Tesseract)
+        class QuaternionMath {
+            constructor(w=1, x=0, y=0, z=0) { this.w=w; this.x=x; this.y=y; this.z=z; }
+            multiply(q) {
+                return new QuaternionMath(
+                    this.w*q.w - this.x*q.x - this.y*q.y - this.z*q.z,
+                    this.w*q.x + this.x*q.w + this.y*q.z - this.z*q.y,
+                    this.w*q.y - this.x*q.z + this.y*q.w + this.z*q.x,
+                    this.w*q.z + this.x*q.y - this.y*q.x + this.z*q.w
+                );
+            }
+            conjugate() { return new QuaternionMath(this.w, -this.x, -this.y, -this.z); }
+            rotateVector(v) {
+                let vecQ = new QuaternionMath(0, v.x, v.y, v.z);
+                let res = this.multiply(vecQ).multiply(this.conjugate());
+                return { x: res.x, y: res.y, z: res.z };
+            }
+        }
+
+        function eulerToQ(pitch, yaw, roll) {
+            let cy = Math.cos(yaw*0.5), sy = Math.sin(yaw*0.5);
+            let cp = Math.cos(pitch*0.5), sp = Math.sin(pitch*0.5);
+            let cr = Math.cos(roll*0.5), sr = Math.sin(roll*0.5);
+            return new QuaternionMath(
+                cr*cp*cy + sr*sp*sy, sr*cp*cy - cr*sp*sy,
+                cr*sp*cy + sr*cp*sy, cr*cp*sy - sr*sp*cy
+            );
+        }
+
         let isMirrorActive = true;
-        let isAstroMirror = false; // For Observatory Tracker
+        let isAstroMirror = false; 
 
         function toggleMirror() {
             isMirrorActive = !isMirrorActive;
@@ -475,8 +515,18 @@
             
             shl_tesseract: { 
                 title: "B(6,2) SHL TESSERACT", 
-                desc: "Harmonische calculator. Freq = Node &times; 43.2 Hz.<br>Node 10 = 432.0 Hz (Anker / Grondtoon)", 
-                azimuth: "432.0", grid: "[8x8 Matrix]", color: "#ff9900", type: "tesseractgrid" 
+                desc: "Harmonische 3D Directory. Freq = Node &times; 43.2 Hz.<br>Sleep over de canvas om de structuur te inspecteren.", 
+                azimuth: "432.0", grid: "[3D Klokbeker]", color: "#ff9900", type: "tesseract3d",
+                extendedHTML: `
+                    <div style="margin-top:15px; border-top:1px dashed #ff990044; padding-top:10px;">
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">RUIMTELIJKE TELEMETRIE</div>
+                        <div class="data-row"><div class="data-label">Y-SPREIDING:</div><div class="data-value"><input type="range" min="50" max="300" value="150" oninput="tessState.vSpread = this.value/100;" style="width:100%"></div></div>
+                        <div class="data-row"><div class="data-label">Z-SPREIDING:</div><div class="data-value"><input type="range" min="50" max="300" value="150" oninput="tessState.rSpread = this.value/100;" style="width:100%"></div></div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:15px; margin-bottom:5px;">ACTIEVE NODES (DIRECTORY)</div>
+                        <div id="tess-dir-list" style="max-height: 200px; overflow-y: auto; border: 1px solid #333; background: #050505;"></div>
+                        <button class="aes-btn" style="background:rgba(255,153,0,0.1); border:1px solid #ff9900; color:#ff9900; padding:10px; width:100%; margin-top:10px; cursor:pointer;" onclick="tessState.autoRot = !tessState.autoRot; this.style.background = tessState.autoRot ? 'rgba(255,153,0,0.1)' : '#ff9900'; this.style.color = tessState.autoRot ? '#000' : '#ff9900';">TOGGLE P2P ROTATIE</button>
+                    </div>
+                `
             }
         };
 
@@ -514,121 +564,128 @@
             const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 432; 
             osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 3.0);
         }
+        function playFreq(freq) {
+            initAudio(); if(!audioCtx) return;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.frequency.value = freq; osc.connect(gain); gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime); 
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+            osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+        }
 
         // --- 5. HTML MODULE BUILDERS ---
         function toBin(n) { return n.toString(2).padStart(6, '0'); }
         function getHW(n) { let w=0; for(let i=0; i<6; i++) if(n & (1<<i)) w++; return w; }
         function getOrbit(n) { let m=n, c=n; for(let i=0;i<6;i++){ c=((c<<1)|(c>>5))&63; if(c<m) m=c; } return m; }
 
-        // --- TESSERACT GRID (DOMEIN 14) ---
-        const tGrid = document.getElementById('tesseract-grid');
-        let tInit = false;
-        
-        function buildTesseract() {
-            if(tInit) return;
-            for(let i=0; i<64; i++) {
-                let cell = document.createElement('div'); cell.className = 'matrix-cell'; cell.id = `tcell-${i}`;
-                cell.innerHTML = `<div class="m-bin">${toBin(i)}</div><div class="m-dec">N-${i}</div>`;
-                cell.onclick = () => scanTesseract(i, true); cell.onmouseenter = () => { if(window.innerWidth >= 1024) scanTesseract(i, true); };
-                tGrid.appendChild(cell);
+        // --- 3D B(6) TESSERACT DIRECTORY LOGICA ---
+        let tessNodes = [], tessEdges = [];
+        let tessState = { pitch: 0.3, yaw: 0, roll: 0, zoom: 120, vSpread: 1.5, rSpread: 1.5, autoRot: true, hoverNode: null, focusedNode: null, isDragging: false, mouse: {x:0, y:0} };
+        const activeTessNodes = [4, 5, 10, 16, 17, 20, 21, 22, 28, 34, 40, 52];
+        const tessBaseFreq = 43.2;
+        const tessRadii = { 0: 0.0, 63: 0.0, 1: 1.0, 31: 1.0, 3: 1.5, 5: 0.6, 9: 2.0, 15: 1.5, 23: 0.6, 27: 2.0, 7: 2.2, 11: 1.2, 19: 0.5, 21: 0.0 };
+        const tessHwColors = ["#333", "#1976D2", "#00BCD4", "#4CAF50", "#FFC107", "#FF5722", "#E91E63"];
+
+        function initTesseract3D() {
+            tessNodes = []; tessEdges = [];
+            const orbits = {};
+            for(let i=0; i<64; i++) { 
+                let o = getOrbit(i); if(!orbits[o]) orbits[o] = []; orbits[o].push(i); 
             }
-            tInit = true;
+            for(let i=0; i<64; i++) {
+                let hw = getHW(i); let o = getOrbit(i); let orbitList = orbits[o];
+                orbitList.sort((a,b) => a-b);
+                let angle = (orbitList.indexOf(i) / orbitList.length) * Math.PI * 2;
+                let radius = tessRadii[o] !== undefined ? tessRadii[o] : 1.0;
+                tessNodes.push({
+                    id: i, hw: hw, orbit: o, bin: toBin(i), freq: (i * tessBaseFreq).toFixed(1),
+                    baseX: Math.cos(angle) * radius, baseY: (hw - 3) * 0.8, baseZ: Math.sin(angle) * radius,
+                    projX: 0, projY: 0, projZ: 0, scale: 1
+                });
+            }
+            for(let i=0; i<64; i++) {
+                for(let j=i+1; j<64; j++) if(getHW(i^j) === 1) tessEdges.push([i,j]);
+            }
+        }
+        initTesseract3D();
+
+        function buildTessDirectory() {
+            const container = document.getElementById('tess-dir-list');
+            if(!container) return;
+            container.innerHTML = '';
+            activeTessNodes.forEach(id => {
+                const node = tessNodes[id];
+                const div = document.createElement('div');
+                div.className = 'dir-item';
+                if(tessState.focusedNode === id) div.classList.add('active');
+                div.innerHTML = `<span style="font-weight:bold;">${id}</span> <span style="color:var(--text-muted);">${node.bin}</span> <span style="text-align:right; color:var(--text-main);">${node.freq} Hz</span>`;
+                div.onclick = () => focusTessNode(id);
+                container.appendChild(div);
+            });
         }
 
-        function scanTesseract(id, playSound = true) {
-            let freq = (id * 43.2).toFixed(1);
+        function focusTessNode(id) {
+            tessState.focusedNode = tessState.focusedNode === id ? null : id;
+            buildTessDirectory();
+            if(tessState.focusedNode !== null) playFreq(tessNodes[id].freq);
+        }
+
+        function drawTesseract3D(cw, ch) {
+            if(tessState.autoRot && !tessState.isDragging) tessState.yaw += 0.003;
             
-            for(let j=0; j<64; j++) {
-                document.getElementById(`tcell-${j}`).className = (j===id) ? 'matrix-cell target' : 'matrix-cell faded';
-            }
-            
-            if (playSound && id > 0) {
-                initAudio();
-                if(audioCtx && audioCtx.state === 'running') {
-                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                    osc.frequency.value = freq; osc.connect(gain); gain.connect(audioCtx.destination);
-                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
-                    osc.start(); osc.stop(audioCtx.currentTime + 1.5);
-                }
-            }
+            let q = eulerToQ(tessState.pitch, tessState.yaw, tessState.roll);
+            tessNodes.forEach(n => {
+                let scaledV = { x: n.baseX * tessState.rSpread, y: n.baseY * tessState.vSpread, z: n.baseZ * tessState.rSpread };
+                let rotated = q.rotateVector(scaledV);
+                let factor = 1000 / (1000 - rotated.z * 100);
+                n.projX = rotated.x * tessState.zoom * factor; 
+                n.projY = rotated.y * tessState.zoom * factor; 
+                n.projZ = rotated.z; 
+                n.scale = factor;
+            });
 
-            let sync = "";
-            let borderColor = "var(--text-accent)";
-            if (id === 10) {
-                sync = "<br><span style='color:#00ffcc; text-shadow:0 0 5px #00ffcc; font-size:0.9rem;'>[!] SYNC: 432.0 Hz ANKER (A4)</span>";
-                borderColor = "#00ffcc";
-            } else if (id === 20) {
-                sync = "<br><span style='color:#ff33aa; text-shadow:0 0 5px #ff33aa; font-size:0.9rem;'>[!] SYNC: 864.0 Hz EERSTE OCTAAF (A5)</span>";
-                borderColor = "#ff33aa";
-            }
+            ctx.lineWidth = 1;
+            tessEdges.forEach(edge => {
+                let n1 = tessNodes[edge[0]], n2 = tessNodes[edge[1]];
+                if(n1.projZ > 9 || n2.projZ > 9) return; 
+                let isHovered = (tessState.hoverNode === edge[0] || tessState.hoverNode === edge[1]);
+                let isFocused = (tessState.focusedNode === edge[0] || tessState.focusedNode === edge[1]);
+                let opacity = 0.15;
+                if(tessState.focusedNode !== null) { opacity = isFocused ? 0.6 : 0.02; } 
+                else if (isHovered) { opacity = 0.8; }
 
-            let optionsHTML = "";
-            for(let i=0; i<64; i++) {
-                let sel = (i === id) ? "selected" : "";
-                optionsHTML += `<option value="${i}" ${sel} style="background:#111;">Node ${i} [${(i*43.2).toFixed(1)} Hz]</option>`;
-            }
+                ctx.strokeStyle = (isHovered || isFocused) ? `rgba(0, 229, 255, ${opacity})` : `rgba(255, 255, 255, ${opacity})`;
+                ctx.lineWidth = (isHovered || isFocused) ? 2 : 1;
+                ctx.beginPath(); ctx.moveTo(n1.projX, n1.projY); ctx.lineTo(n2.projX, n2.projY); ctx.stroke();
+            });
 
-            let ratiosHTML = `
-                <div style="padding-bottom:5px; border-bottom:1px solid rgba(255,153,0,0.3); color:#ff9900;"><b>NODE</b></div>
-                <div style="padding-bottom:5px; border-bottom:1px solid rgba(255,153,0,0.3); color:#ff9900;"><b>FREQ</b></div>
-                <div style="padding-bottom:5px; border-bottom:1px solid rgba(255,153,0,0.3); color:#ff9900;"><b>VERHOUDING</b></div>`;
-            const rLabels = ["Stilte", "1:10", "1:5", "3:10", "2:5", "1:2 (Octaaf van N-1)", "3:5", "7:10", "4:5", "9:10", "1:1 (Anker 432Hz)"];
-            for(let i=1; i<=10; i++) {
-                let cl = (i === id) ? "color:#fff; font-weight:bold; background:rgba(255,153,0,0.2);" : "color:#ccc;";
-                ratiosHTML += `
-                    <div style="${cl} padding:2px;">N-${i}</div>
-                    <div style="${cl} padding:2px;">${(i*43.2).toFixed(1)} Hz</div>
-                    <div style="${cl} padding:2px;">${rLabels[i]}</div>`;
-            }
-
-            let octavesHTML = `
-                <div style="padding-bottom:5px; border-bottom:1px solid rgba(255,153,0,0.3); color:#ff9900;"><b>OCTAAF</b></div>
-                <div style="padding-bottom:5px; border-bottom:1px solid rgba(255,153,0,0.3); color:#ff9900;"><b>FREQUENTIE</b></div>`;
-            let cF = 432;
-            for(let i=0; i<=10; i++) {
-                let cl = (cF == freq) ? "color:#fff; font-weight:bold; background:rgba(255,153,0,0.2);" : "color:#ccc;";
-                let label = `Octaaf ${i}`;
-                if(i===0) label += " (Basis/Anker)";
-                else if(i===1) label += " (Node 20)";
-                let fDisplay = cF.toLocaleString('nl-NL', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+            let sortedNodes = [...tessNodes].sort((a,b) => b.projZ - a.projZ);
+            sortedNodes.forEach(n => {
+                if(n.projZ > 9) return;
+                let isHovered = (tessState.hoverNode === n.id);
+                let isFocused = (tessState.focusedNode === n.id);
+                let radius = (isHovered || isFocused ? 7 : 3.5) * n.scale;
+                let baseColor = tessHwColors[n.hw];
                 
-                octavesHTML += `
-                    <div style="${cl} padding:2px;">${label}</div>
-                    <div style="${cl} padding:2px;">${fDisplay} Hz</div>`;
-                cF *= 2;
-            }
-
-            document.getElementById("detail-content").style.borderColor = borderColor;
-            document.getElementById("detail-content").innerHTML = `
-                <h3 style="color:${borderColor}; margin-top:0; transition:0.3s;">> B(6,2) SHL TESSERACT</h3>
-                <p style="margin: 10px 0 15px 0; color:var(--text-muted); font-size:clamp(0.8rem, 1.5vw, 0.95rem); line-height: 1.5;">
-                    Harmonische calculator. <i>Freq = Node &times; 43.2 Hz.</i><br>
-                    Selecteer via het raster of gebruik het uitklapvenster hieronder.
-                </p>
-                <div style="margin-bottom:15px; margin-top:10px;">
-                    <label style="color:var(--text-muted); font-size:0.8rem; font-weight:bold;">TESSERACT NODE SELECTOR:</label>
-                    <select class="aes-btn" style="width:100%; margin-top:5px; border:1px solid ${borderColor}; color:${borderColor}; background:rgba(0,0,0,0.5); padding:10px; cursor:pointer; font-family:monospace; transition:0.3s;" onchange="scanTesseract(parseInt(this.value), true)">
-                        ${optionsHTML}
-                    </select>
-                </div>
-                <div class="data-row"><div class="data-label">FORMULE:</div><div class="data-value">${id} x 43.2 Hz</div></div>
-                <div class="data-row" style="border:none;"><div class="data-label">RESULTEREND:</div><div class="data-value" style="font-size:1.4rem; color:#fff; transition:0.3s;">${freq} Hz ${sync}</div></div>
-                <details style="margin-top:15px; border:1px solid rgba(255,153,0,0.3); padding:10px; background:rgba(0,0,0,0.4); cursor:pointer;">
-                    <summary style="color:#ff9900; font-weight:bold; outline:none;">[+] NODE 1 t/m 10 (Verhoudingen)</summary>
-                    <div style="margin-top:10px; font-size:0.8rem; display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; align-items:center;">
-                        ${ratiosHTML}
-                    </div>
-                </details>
-                <details style="margin-top:10px; border:1px solid rgba(255,153,0,0.3); padding:10px; background:rgba(0,0,0,0.4); cursor:pointer;">
-                    <summary style="color:#ff9900; font-weight:bold; outline:none;">[+] 10 OCTAVEN (Vanaf 432 Hz)</summary>
-                    <div style="margin-top:10px; font-size:0.8rem; display:grid; grid-template-columns:1fr 1fr; gap:5px; align-items:center;">
-                        ${octavesHTML}
-                    </div>
-                </details>
-            `;
+                if (tessState.focusedNode !== null && !isFocused) {
+                    ctx.fillStyle = "rgba(50, 50, 50, 0.3)"; ctx.shadowBlur = 0;
+                } else if (isFocused) {
+                    ctx.fillStyle = "#fff"; ctx.shadowBlur = 20; ctx.shadowColor = "var(--text-accent)";
+                } else if (isHovered) {
+                    ctx.fillStyle = "#fff"; ctx.shadowBlur = 15; ctx.shadowColor = "var(--text-main)";
+                } else {
+                    if(activeTessNodes.includes(n.id)) {
+                        ctx.fillStyle = baseColor; ctx.shadowBlur = 8; ctx.shadowColor = baseColor;
+                    } else {
+                        ctx.fillStyle = "rgba(100, 100, 100, 0.5)"; ctx.shadowBlur = 0;
+                    }
+                }
+                ctx.beginPath(); ctx.arc(n.projX, n.projY, Math.max(1, radius), 0, Math.PI*2); ctx.fill();
+            });
+            ctx.shadowBlur = 0;
         }
 
-        // AES / RIJNDAEL
+        // --- AES / RIJNDAEL ---
         const aesMatrixDiv = document.getElementById('aes-state-matrix'); let aesInit = false;
         function buildAesMatrix() {
             if(aesInit) return;
@@ -663,7 +720,7 @@
             animateAesMatrix(); playResonance(5, 5, false, true); 
         }
 
-        // LUO PAN 17x17
+        // --- LUO PAN 17x17 ---
         const luoGrid = document.getElementById('luopan-grid'); let luoInit = false; const luoSymbols = [];
         function generateLuoPanData() { 
             for(let i=0x2630; i<=0x2637; i++) luoSymbols.push(String.fromCharCode(i)); 
@@ -692,7 +749,7 @@
             document.getElementById("detail-content").innerHTML = `<h3 style="color:var(--color-luopan); margin-top:0; border-bottom: 1px dashed rgba(231, 76, 60, 0.4); padding-bottom:10px;">> LUO PAN UNICODE VERTALER</h3><div style="display:flex; justify-content:space-between; align-items:center;"><div style="flex:1;"><div class="data-row"><div class="data-label" style="color:var(--color-luopan);">MATRIX POSITIE:</div><div class="data-value" style="color:#fff;">Rij ${row}, Kolom ${col}</div></div><div class="data-row"><div class="data-label" style="color:var(--color-luopan);">UNICODE HEX:</div><div class="data-value" style="color:#fff; font-weight:bold;">${hexVal}</div></div><div class="data-row"><div class="data-label" style="color:var(--color-luopan);">ASCII / DEC:</div><div class="data-value">${decVal}</div></div><div class="data-row" style="border-bottom:none;"><div class="data-label" style="color:var(--color-luopan);">HTML ENTITY:</div><div class="data-value" style="font-family:monospace; color:var(--text-muted);">${htmlCode}</div></div></div><div style="font-size:clamp(3rem, 6vw, 4.5rem); margin-left: 20px; color:var(--color-gulden); text-shadow:0 0 15px rgba(231, 76, 60, 0.6);">${char}</div></div>`; 
         }
 
-        // OMNI CIPHER MASTER
+        // --- OMNI CIPHER MASTER ---
         const omniGrid = document.getElementById('omnicipher-grid'); let omniInit = false;
         const oHeb = ["א","ב","ג","ד","ה","ו","ז","ח","ט","י","כ","ל","מ","נ","ס","ע","פ","צ","ק","ר","ש","ת"]; const oHebGem = [1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,200,300,400]; const oDee = ["☉(Zon)","☽(Maan)","☿(Mercurius)","♀(Venus)","♂(Mars)","♃(Jupiter)","♄(Saturnus)","♅(Uranus)","♆(Neptunus)","♇(Pluto)","♈(Ram)","♉(Stier)","♊(Tweelingen)","♋(Kreeft)","♌(Leeuw)","♍(Maagd)","♎(Weegschaal)","♏(Schorpioen)","♐(Boogschutter)","♑(Steenbok)","♒(Waterman)","♓(Vissen)","⚷(Chiron)","⚸(Zwarte Maan)"]; const oStuart = ["◬(A)","⧊(B)","∿(C)","∇(D)","∆(E)","⋈(F)","⨁(G)","⨂(H)","⨝(I)","⨻(K)","⩃(L)","⩋(M)","⟁(N)","⦾(O)","⦿(P)","⧂(Q)","⧃(R)","⧉(S)","⧰(T)","⧱(V)","⧓(W)","⧔(X)","⧕(Y)","⧑(Z)"]; const oVortex = ["⚿","⌖","⌬","⎈","⌘","⌥","⎊","⍋","⍟","⍎","⎔","⎗","⍢","⍣","⍰","⏣","⏢","⏦","⏧","⏾","⍡","⍼","⎘","⎚","⍾","⎉","⎋","⎌","⎍","⎏","⎐","⎑"];
         function buildOmniCipher() { 
@@ -710,7 +767,7 @@
             document.getElementById("detail-content").innerHTML = `<h3 style="color:var(--text-main); margin-top:0; border-bottom: 1px dashed rgba(0,255,204,0.4); padding-bottom:10px;">> OMNI-CIPHER DECRYPTIE [${toBin(i)}]</h3><div class="data-row"><div class="data-label" style="color:var(--text-main);">VORTEX UNICODE:</div><div class="data-value" style="color:#fff;"><span style="font-size:1.5rem; vertical-align:middle; margin-right:10px;">${vSym}</span> Hex. Dec. ${i}</div></div><div class="data-row"><div class="data-label" style="color:var(--color-terracotta);">TORA ELS (HEB):</div><div class="data-value" style="color:#fff;"><span style="font-size:1.5rem; vertical-align:middle; margin-right:10px; color:var(--color-terracotta);">${hSym}</span> Gematria: ${hGem}</div></div><div class="data-row"><div class="data-label" style="color:var(--color-gulden);">JOHN DEE (ALCH):</div><div class="data-value" style="color:#fff;"><span style="font-size:1.5rem; vertical-align:middle; margin-right:10px; color:var(--color-gulden);">${dSym}</span> ${dMean}</div></div><div class="data-row"><div class="data-label" style="color:var(--color-gamuungell);">M. STUART CIPHER:</div><div class="data-value" style="color:#fff;"><span style="font-size:1.5rem; vertical-align:middle; margin-right:10px; color:var(--color-gamuungell);">${sSym}</span> Subst: ${sMean}</div></div><div class="data-row" style="border-bottom:none;"><div class="data-label" style="color:var(--color-gothiek);">I TJING ORACLE:</div><div class="data-value" style="color:#fff;"><span style="font-size:2.5rem; vertical-align:middle; margin-right:10px; color:var(--color-gothiek);">${iSym}</span> Hexagram ${i+1}</div></div>`; 
         }
 
-        // Andere Grid Builders (Matrix, ELS, Hexagram, Unicode) 
+        // --- Andere Grid Builders (Matrix, ELS, Hexagram, Unicode) ---
         const matrixGrid = document.getElementById('matrix-grid'); let matrixInit = false;
         function buildMatrix() { if(matrixInit) return; for(let i=0; i<64; i++) { let cell = document.createElement('div'); cell.className = 'matrix-cell'; cell.id = `mcell-${i}`; cell.innerHTML = `<div class="m-bin">${toBin(i)}</div><div class="m-dec">${i}</div>`; cell.onclick=()=>scanMatrix(i); cell.onmouseenter=()=>{if(window.innerWidth>=1024) scanMatrix(i);}; matrixGrid.appendChild(cell); } matrixInit=true; }
         function scanMatrix(id) { let tO=getOrbit(id), tH=getHW(id); let rF=playResonance(tO,tH); let s=0, c=0; for(let i=0; i<64; i++) { let el = document.getElementById(`mcell-${i}`); el.className='matrix-cell faded'; if(i===id) el.className='matrix-cell target'; else if(getHW(i^id)===1){ el.className='matrix-cell symlink'; s++; } else if(getOrbit(i)===tO){ el.className='matrix-cell clone'; c++; } } document.getElementById("detail-content").style.borderColor = "var(--text-main)"; document.getElementById("detail-content").innerHTML = `<h3 style="color:var(--text-main); margin-top:0;">> NODE [${toBin(id)}]</h3><div class="data-row"><div class="data-label">FREQ:</div><div class="data-value">${rF} Hz</div></div><div class="data-row"><div class="data-label">MASSA (Y):</div><div class="data-value">${tH}</div></div><div class="data-row"><div class="data-label">SYMLINKS:</div><div class="data-value">${s} Actief</div></div>`; }
@@ -735,6 +792,86 @@
         let currentModule = null, animFrame = null, cRot = 0;
         let defaultDetailHTML = "";
 
+        // Tesseract Mouse Interaction
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (vortexData[currentModule]?.type !== 'tesseract3d') {
+                document.getElementById('tess-tooltip').style.display = 'none';
+                return;
+            }
+            const pos = getMousePos(e);
+            
+            if (!tessState.isDragging) {
+                let closest = null, minDist = 15;
+                let mx = pos.x - canvas.width/2;
+                let my = pos.y - canvas.height/2;
+
+                tessNodes.forEach(n => {
+                    if(n.projZ > 9) return;
+                    let d = Math.hypot(n.projX - mx, n.projY - my);
+                    if(d < minDist) { minDist = d; closest = n.id; }
+                });
+                tessState.hoverNode = closest;
+                
+                const tt = document.getElementById('tess-tooltip');
+                if (closest !== null) {
+                    const n = tessNodes[closest];
+                    tt.style.display = 'block';
+                    tt.style.left = (pos.x + 20) + 'px';
+                    tt.style.top = (pos.y + 20) + 'px';
+                    tt.innerHTML = `<div style="color:var(--text-accent); font-weight:bold;">${n.freq} HZ</div><div style="color:var(--text-main); margin-top:2px;">${n.bin}</div><div style="color:#aaa; font-size:0.9em; margin-top:2px;">NODE ID: ${n.id}</div>`;
+                    canvas.style.cursor = 'pointer';
+                } else {
+                    tt.style.display = 'none';
+                    canvas.style.cursor = 'crosshair';
+                }
+            }
+            
+            if (tessState.isDragging) {
+                let dx = pos.x - tessState.mouse.x;
+                let dy = pos.y - tessState.mouse.y;
+                tessState.yaw += dx * 0.005;
+                tessState.pitch += dy * 0.005;
+                tessState.mouse = pos;
+            }
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (vortexData[currentModule]?.type === 'tesseract3d') {
+                tessState.isDragging = true;
+                tessState.mouse = getMousePos(e);
+            }
+        });
+        window.addEventListener('mouseup', () => { tessState.isDragging = false; });
+        
+        canvas.addEventListener('touchstart', (e) => {
+            if (vortexData[currentModule]?.type === 'tesseract3d') {
+                tessState.isDragging = true; tessState.mouse = getMousePos(e);
+            }
+        }, {passive: false});
+        canvas.addEventListener('touchmove', (e) => {
+            if (vortexData[currentModule]?.type === 'tesseract3d' && tessState.isDragging) {
+                e.preventDefault();
+                const pos = getMousePos(e);
+                let dx = pos.x - tessState.mouse.x; let dy = pos.y - tessState.mouse.y;
+                tessState.yaw += dx * 0.005; tessState.pitch += dy * 0.005;
+                tessState.mouse = pos;
+            }
+        }, {passive: false});
+        window.addEventListener('touchend', () => { tessState.isDragging = false; });
+
+        canvas.addEventListener('click', () => {
+            if (vortexData[currentModule]?.type === 'tesseract3d' && tessState.hoverNode !== null) {
+                focusTessNode(tessState.hoverNode);
+            }
+        });
+
         function loadModule(id) {
             if(window.innerWidth < 1024) toggleMenu(); 
             currentModule = id; const d = vortexData[id];
@@ -756,6 +893,10 @@
             document.getElementById("detail-content").style.borderColor = d.color;
             document.getElementById("detail-content").innerHTML = defaultDetailHTML;
 
+            if (d.type === 'tesseract3d') {
+                setTimeout(buildTessDirectory, 50);
+            }
+
             if (d.type === 'ai_bridge') {
                 const status = document.getElementById('mirrorStatus');
                 if(status) {
@@ -774,7 +915,8 @@
             }
 
             // Reset UI
-            matrixGrid.style.display = 'none'; elsGrid.style.display = 'none'; hexGrid.style.display = 'none'; unicodeGrid.style.display = 'none'; omniGrid.style.display = 'none'; luoGrid.style.display = 'none'; tGrid.style.display = 'none'; document.getElementById('aes-grid').style.display = 'none'; canvas.style.display = 'none';
+            matrixGrid.style.display = 'none'; elsGrid.style.display = 'none'; hexGrid.style.display = 'none'; unicodeGrid.style.display = 'none'; omniGrid.style.display = 'none'; luoGrid.style.display = 'none'; document.getElementById('aes-grid').style.display = 'none'; canvas.style.display = 'none';
+            document.getElementById('tess-tooltip').style.display = 'none';
             if (animFrame) cancelAnimationFrame(animFrame);
 
             // Router
@@ -784,12 +926,6 @@
             else if (d.type === 'unicodegrid') { unicodeGrid.style.display = 'grid'; buildUnicodeMatrix(); for(let i=0; i<25; i++) document.getElementById(`ucell-${i}`).className = 'uni-cell'; }
             else if (d.type === 'omnigrid') { omniGrid.style.display = 'grid'; buildOmniCipher(); for(let i=0; i<64; i++) document.getElementById(`ocell-${i}`).className = 'omni-cell'; }
             else if (d.type === 'luopangrid') { luoGrid.style.display = 'grid'; buildLuoPan(); for(let i=0; i<289; i++) document.getElementById(`lcell-${i}`).className = 'luo-cell'; }
-            else if (d.type === 'tesseractgrid') { 
-                tGrid.style.display = 'grid'; 
-                buildTesseract(); 
-                for(let i=0; i<64; i++) document.getElementById(`tcell-${i}`).className = 'matrix-cell'; 
-                scanTesseract(10, false);
-            }
             else if (d.type === 'aesgrid') { document.getElementById('aes-grid').style.display = 'flex'; buildAesMatrix(); animateAesMatrix(); }
             else { 
                 canvas.style.display = 'block'; 
@@ -812,10 +948,11 @@
             else if (type === 'pigpen') drawPigpen(cw, ch);
             else if (type === 'homophonic') drawHomophonic(cw, ch);
             else if (type === 'observatory') drawObservatory(cw, ch);
+            else if (type === 'tesseract3d') drawTesseract3D(cw, ch);
             else drawRadar(cw, ch);
             
             ctx.restore();
-            if (['timegrid', 'resonator', 'geometry_108', 'ai_bridge', 'vigenere', 'pigpen', 'homophonic', 'observatory'].includes(type)) { animFrame = requestAnimationFrame(renderCanvas); }
+            if (['timegrid', 'resonator', 'geometry_108', 'ai_bridge', 'vigenere', 'pigpen', 'homophonic', 'observatory', 'tesseract3d'].includes(type)) { animFrame = requestAnimationFrame(renderCanvas); }
         }
 
         // --- CANVAS RENDERERS ---
