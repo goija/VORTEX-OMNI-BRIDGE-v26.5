@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VORTEX // QUANTUM HOLOGRAM v190.0</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --bg: #010103; --panel: #0a0a0f; --border: #1f242d;
+            --main: #00ffcc; --ai-glow: #00a2ff; --neural: #ff00ff; --bridge: #ffcc00;
+            --tesseract: #00ff66; --klokbeker: #ff3366; --tactical: #ff0000;
+            --kadaster: #d4af37; 
+            --font-mono: 'Fira Code', 'Courier New', monospace;
+        }
+        body, html { margin:0; padding:0; height:100vh; background:var(--bg); color:#e0e0e0; font-family:sans-serif; overflow:hidden; }
+
+        .vortex-container { display: flex; height: 100vh; gap: 2px; background: var(--border); }
+        .pane { background: var(--bg); display: flex; flex-direction: column; overflow: hidden; flex: 1; transition: flex 0.4s ease; }
+        .pane.expanded { flex: 4; }
+
+        .header { 
+            height: 40px; background: var(--panel); border-bottom: 1px solid var(--border); 
+            display: flex; align-items: center; padding: 0 15px; font-size: 0.7rem; 
+            font-family: var(--font-mono); font-weight: bold; justify-content: space-between;
+            color: var(--ai-glow); text-transform: uppercase;
+        }
+
+        /* --- VIEWPORT ENGINE --- */
+        .viewport-engine { flex: 1; position: relative; background: #000; display: flex; flex-direction: row; transition: background 0.8s; }
+        .viewport-engine.white-lock { background: #ffffff; } 
+        
+        #map-layer, #tesseract-layer, #iframe-layer { 
+            position: absolute; top:0; left:0; width: 100%; height: 100%; z-index: 5; 
+            display: none; background: transparent; transition: width 0.3s ease; border: none;
+        }
+        
+        /* Modus Filters */
+        .kadaster-mode #map-layer { filter: sepia(0.8) contrast(1.2) brightness(0.9) saturate(1.5); }
+        .tactical-mode #map-layer { filter: contrast(1.3) saturate(0.5) hue-rotate(300deg); }
+        .marker-mode #map-layer { cursor: crosshair !important; }
+
+        #tesseract-layer { display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        canvas { width: 100%; height: 100%; display: block; }
+
+        #override-tracker { position: absolute; top:0; left:0; width: 100%; height: 100%; z-index: 20; display: none; cursor: crosshair; box-shadow: inset 0 0 50px rgba(0, 255, 102, 0.2); outline: none; }
+        .tracker-active #override-tracker { display: block; }
+        
+        /* Dual Core & Holographic Modus */
+        .viewport-engine.dual #map-layer { position: relative; width: 50%; display: block; border-right: 1px solid var(--border); }
+        .viewport-engine.dual #tesseract-layer { position: relative; width: 50%; display: flex; }
+        .viewport-engine.dual #override-tracker { width: 50%; left: 50%; } 
+
+        .viewport-engine.hologram #map-layer { display: block; z-index: 4; width: 100%; }
+        .viewport-engine.hologram #tesseract-layer { display: flex; z-index: 10; width: 100%; pointer-events: none; }
+        .viewport-engine.hologram #override-tracker { display: block; z-index: 20; width: 100%; left: 0; }
+
+        /* Geo Animaties & Markers */
+        .klokbeker-pulse { border-radius: 50%; border: 2px solid var(--klokbeker); box-shadow: 0 0 20px var(--klokbeker), inset 0 0 15px var(--klokbeker); background: rgba(255, 51, 102, 0.15); animation: resonate 4s cubic-bezier(0.165, 0.84, 0.44, 1) infinite; }
+        .klokbeker-core { background: var(--klokbeker); border-radius: 50%; box-shadow: 0 0 10px #fff; }
+        .kadaster-pin { border-radius: 0; border: 2px solid var(--kadaster); background: rgba(212, 175, 55, 0.3); box-shadow: 0 0 10px var(--kadaster); }
+        .tactical-pin { border-radius: 50%; border: 2px solid var(--tactical); background: rgba(255, 0, 0, 0.3); box-shadow: 0 0 15px var(--tactical); animation: strobe 0.5s infinite alternate; }
+        .custom-data-point { background: var(--main); border-radius: 50%; box-shadow: 0 0 12px var(--main); border: 1px solid #fff; }
+
+        @keyframes resonate { 0% { transform: scale(0.1); opacity: 1; } 50% { opacity: 0.6; } 100% { transform: scale(3.5); opacity: 0; } }
+        @keyframes strobe { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.2); opacity: 1; } }
+
+        .overlay-status { position: absolute; bottom: 20px; right: 20px; z-index: 1000; background: rgba(0,0,0,0.8); padding: 8px 12px; border: 1px solid var(--main); font-size: 0.6rem; font-family: var(--font-mono); color: var(--main); pointer-events: none; text-transform: uppercase; }
+        .white-lock .overlay-status { background: rgba(255,255,255,0.9); color: #000; border-color: #000; font-weight: bold; }
+        
+        .tess-stats { position: absolute; top: 20px; left: 20px; z-index: 1000; font-size: 0.65rem; font-family: var(--font-mono); color: var(--tesseract); pointer-events: none; background: rgba(0,0,0,0.8); padding: 10px; border-left: 2px solid var(--tesseract); box-shadow: 0 0 10px rgba(0,255,102,0.2); }
+        .white-lock .tess-stats { color: #000; background: rgba(255,255,255,0.9); border-color: #000; }
+
+        /* --- TERMINAL & UI --- */
+        #stream { flex: 1; overflow-y: auto; padding: 15px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--ai-glow); line-height: 1.6; }
+        .entry { margin-bottom: 8px; border-left: 2px solid var(--neural); padding-left: 10px; animation: slideIn 0.2s ease-out; word-wrap: break-word; }
+        .entry.tess { border-left-color: var(--tesseract); color: var(--tesseract); }
+        .entry.klok { border-left-color: var(--klokbeker); color: #fff; }
+        .entry.map { border-left-color: var(--main); color: var(--main); font-weight: bold; }
+        .entry.kadaster { border-left-color: var(--kadaster); color: var(--kadaster); }
+        .entry.tact { border-left-color: var(--tactical); color: var(--tactical); }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
+        
+        .input-deck { padding: 15px; background: var(--panel); border-top: 1px solid var(--border); }
+        .v-input { width: 100%; background: #000; border: 1px solid var(--border); color: var(--main); padding: 10px; font-family: var(--font-mono); outline: none; border-radius: 4px; box-sizing: border-box; }
+        
+        .btn-ctrl { background: #000; border: 1px solid var(--border); color: var(--main); cursor: pointer; font-size: 0.7rem; padding: 8px 10px; margin: 4px 0; width: 100%; font-family: var(--font-mono); text-align: left; transition: 0.2s; box-sizing: border-box; }
+        .btn-ctrl:hover { border-color: var(--main); background: rgba(0, 255, 204, 0.05); }
+        .btn-ctrl.active { border-color: #fff; box-shadow: 0 0 10px #fff; }
+
+        .cmd-table { width: 100%; font-size: 0.7rem; margin-top: 5px; color: #aaa; border-collapse: collapse; }
+        .cmd-table td { padding: 4px 2px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .cmd-table td:first-child { color: var(--main); width: 150px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="vortex-container">
+    <section class="pane">
+        <div class="header">SYSTEM_CONTROLS</div>
+        <div style="padding: 15px; overflow-y: auto;">
+
+            <div style="font-size:0.6rem; color:#777; margin-bottom:5px; font-family:var(--font-mono);">MAP NAVIGATIE & DATA</div>
+            <div style="display: flex; gap: 5px;">
+                <button class="btn-ctrl" onclick="simulateCmd('zoom in')">[+] ZOOM IN</button>
+                <button class="btn-ctrl" onclick="simulateCmd('zoom out')">[-] ZOOM OUT</button>
+            </div>
+            <button class="btn-ctrl" style="color:var(--main); border-color:var(--main); font-weight:bold;" onclick="simulateCmd('map mark')">>> ENABLE DATA POINT MODE</button>
+            <button class="btn-ctrl" style="color:var(--main); border-color:var(--main);" onclick="simulateCmd('map scan')">> ENGINE: SCAN GEO DATA</button>
+            
+            <div style="margin-top:20px; font-size:0.6rem; color:#777; margin-bottom:5px; font-family:var(--font-mono);">TACTISCHE VECTOREN</div>
+            <button class="btn-ctrl" style="color:var(--tactical); border-color:var(--tactical);" onclick="simulateCmd('tactical raffinaderij')">[T] BRUG: RAFFINADERIJ THOLEN</button>
+
+            <div style="margin-top:20px; font-size:0.6rem; color:#777; margin-bottom:5px; font-family:var(--font-mono);">KADASTRALE ATLAS 1832</div>
+            <button class="btn-ctrl" style="color:var(--kadaster); border-color:var(--kadaster);" onclick="simulateCmd('kadaster smd')">[K] SINT-MAARTENSDIJK</button>
+            <button class="btn-ctrl" style="color:var(--kadaster); border-color:var(--kadaster);" onclick="simulateCmd('kadaster stavenisse')">[K] STAVENISSE</button>
+            <button class="btn-ctrl" style="color:var(--kadaster); border-color:var(--kadaster);" onclick="simulateCmd('kadaster scherpenisse')">[K] SCHERPENISSE</button>
+            <button class="btn-ctrl" style="color:var(--kadaster); border-color:var(--kadaster);" onclick="simulateCmd('kadaster poortvliet')">[K] POORTVLIET</button>
+
+            <div style="margin-top:20px; font-size:0.6rem; color:#777; margin-bottom:5px; font-family:var(--font-mono);">VIEWPORT MODES</div>
+            <button class="btn-ctrl" style="color:var(--neural); border-color:var(--neural);" onclick="simulateCmd('dual')">[#] SPLIT: DUAL-CORE</button>
+            <button class="btn-ctrl" onclick="simulateCmd('geo')">[O] FULL: GEO-MAP</button>
+            <button class="btn-ctrl" style="color:var(--tesseract); border-color:var(--tesseract);" onclick="simulateCmd('tesseract init')">[4D] FULL: TESSERACT</button>
+            
+            <div style="margin-top:20px; font-size:0.6rem; color:#777; font-family:var(--font-mono);">QUANTUM CARTOGRAPHY</div>
+            <button id="btn-holo" class="btn-ctrl active" style="color:var(--tesseract); border-color:var(--tesseract); font-weight:bold;" onclick="simulateCmd('map project')">> HOLOGRAM: PROJECT TESSERACT</button>
+            <button class="btn-ctrl" style="color:var(--bridge); border-color:var(--bridge);" onclick="simulateCmd('tesseract flip')">> ENGINE: POLAR FLIP 45°</button>
+        </div>
+    </section>
+
+    <section class="pane expanded">
+        <div class="header">
+            <span id="vp-title">VIEWPORT // QUANTUM HOLOGRAPHY</span>
+        </div>
+        <div class="viewport-engine hologram" id="vp-engine">
+            <div id="map-layer" style="display: block;"></div>
+            
+            <div id="tesseract-layer" style="display: flex;">
+                <div class="tess-stats">
+                    <span style="opacity:0.6">AZIMUTH:</span> <b id="az-val">0.00°</b><br>
+                    <span style="opacity:0.6">PITCH:</span> <b id="pitch-val">0.00°</b><br>
+                    <span style="opacity:0.6">PHASE:</span> <b id="dim-val">PHASE-0 (0°)</b><br>
+                    <span style="opacity:0.6">GEO-LOCK:</span> <b id="geo-val">LAT 51.587 / LON 4.074</b><br>
+                    <span style="opacity:0.6; display:block; margin-top:3px; border-top:1px solid var(--tesseract); padding-top:3px;">STATUS:</span> <b id="lock-stat">AUTO_SPIN</b>
+                </div>
+                <canvas id="omniCanvas"></canvas>
+            </div>
+            
+            <div id="override-tracker" tabindex="0"></div>
+            <div class="overlay-status" id="status-tag">HOLO_OVERLAY_ACTIVE</div>
+        </div>
+    </section>
+
+    <section class="pane">
+        <div class="header">NEURAL_CLI_TERMINAL</div>
+        <div id="stream">
+            <div class="entry"><b>[BOOT]:</b> Quantum Hologram v190.0 Online.</div>
+            <div class="entry map"><b>[SYSTEM]:</b> Holografische projectie en Tesseract zijn succesvol gefuseerd.</div>
+        </div>
+        <div class="input-deck">
+            <input type="text" class="v-input" id="cli-input" placeholder="Voer commando in ('help')..." onkeypress="handleCmd(event)">
+        </div>
+    </section>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // --- UI ELEMENTS ---
+    const vpEngine = document.getElementById('vp-engine');
+    const tessLayer = document.getElementById('tesseract-layer');
+    const mapDiv = document.getElementById('map-layer');
+    const vpTitle = document.getElementById('vp-title');
+    const statusTag = document.getElementById('status-tag');
+    const stream = document.getElementById('stream');
+    const tracker = document.getElementById('override-tracker');
+    const btnHolo = document.getElementById('btn-holo');
+
+    // --- LEAFLET MAP ENGINE ---
+    let map, activeResonator;
+    let projectionLayerGroup, geoMarkerGroup, customDataGroup;
+    let currentTarget = [51.587, 4.074]; 
+    let projectToMap = true; // Standaard aan in v190.0
+    let markerModeActive = false;
+
+    const coordsData = {
+        smd: [51.5478, 4.0782], stavenisse: [51.5935, 4.0041],
+        scherpenisse: [51.5485, 4.0945], poortvliet: [51.5447, 4.1440],
+        tholen: [51.5350, 4.2215], raffinaderij: [51.5280, 4.2385]
+    };
+
+    function initMap() {
+        map = L.map('map-layer', { zoomControl: false }).setView(currentTarget, 12);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+        
+        projectionLayerGroup = L.layerGroup().addTo(map);
+        geoMarkerGroup = L.layerGroup().addTo(map);
+        customDataGroup = L.layerGroup().addTo(map);
+
+        map.on('move', () => {
+            const c = map.getCenter();
+            document.getElementById('geo-val').innerText = `LAT ${c.lat.toFixed(4)} / LON ${c.lng.toFixed(4)}`;
+        });
+
+        // Click Event voor Data Punten
+        map.on('click', (e) => {
+            if(markerModeActive) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                
+                L.marker([lat, lng], { 
+                    icon: L.divIcon({ className: 'custom-data-point', iconSize: [12, 12], iconAnchor: [6, 6] }) 
+                }).addTo(customDataGroup).bindPopup(`<b>PUNT DATA</b><br>LAT: ${lat.toFixed(5)}<br>LON: ${lng.toFixed(5)}`);
+                
+                pushLog(`<b>[DATA_POINT]:</b> Marker vastgezet op LAT ${lat.toFixed(5)} // LON ${lng.toFixed(5)}`, 'map');
+            }
+        });
+    }
+
+    function hideAllLayers() {
+        mapDiv.style.display = 'none';
+        tessLayer.style.display = 'none';
+        vpEngine.classList.remove('dual', 'hologram', 'tracker-active', 'kadaster-mode', 'tactical-mode');
+        projectToMap = false;
+        btnHolo.classList.remove('active');
+        projectionLayerGroup.clearLayers();
+    }
+
+    function activateSingle(mode) {
+        hideAllLayers();
+        if(mode === 'tesseract') {
+            tessLayer.style.display = 'flex';
+            vpTitle.innerText = `VIEWPORT // NATIVE TESSERACT CORE`;
+            statusTag.innerText = `4D_MODE`;
+        } else if (mode === 'map') {
+            mapDiv.style.display = 'block';
+            setTimeout(() => { map.invalidateSize(); }, 100);
+            vpTitle.innerText = `VIEWPORT // GEO_MATRIX`;
+            statusTag.innerText = markerModeActive ? "DATA_POINT_MODE" : "GEO_MODE";
+        }
+    }
+
+    function activateDual() {
+        hideAllLayers();
+        vpEngine.classList.add('dual');
+        mapDiv.style.display = 'block';
+        tessLayer.style.display = 'flex';
+        setTimeout(() => { map.invalidateSize(); }, 300);
+        vpTitle.innerText = `VIEWPORT // DUAL-CORE (GEO + 4D)`;
+        statusTag.innerText = "SPLIT_SCREEN";
+        pushLog("<b>[DUAL_CORE]:</b> Split-screen geactiveerd.", "neural");
+    }
+
+    function activateHologram() {
+        hideAllLayers();
+        projectToMap = true;
+        vpEngine.classList.add('hologram');
+        btnHolo.classList.add('active');
+        mapDiv.style.display = 'block';
+        tessLayer.style.display = 'flex';
+        setTimeout(() => { map.invalidateSize(); }, 100);
+        vpTitle.innerText = `VIEWPORT // QUANTUM HOLOGRAPHY`;
+        statusTag.innerText = "HOLO_OVERLAY_ACTIVE";
+    }
+
+    function loadPOI(locationKey, name, type) {
+        if(tessLayer.style.display === 'flex' && !vpEngine.classList.contains('dual') && !vpEngine.classList.contains('hologram')) {
+            activateSingle('map');
+        }
+        vpEngine.classList.remove('kadaster-mode', 'tactical-mode');
+        
+        let iconClass, logType, borderColor;
+        if (type === 'kadaster') {
+            vpEngine.classList.add('kadaster-mode'); iconClass = 'kadaster-pin'; logType = 'kadaster'; borderColor = 'var(--kadaster)';
+        } else if (type === 'tactical') {
+            vpEngine.classList.add('tactical-mode'); iconClass = 'tactical-pin'; logType = 'tact'; borderColor = 'var(--tactical)';
+        }
+
+        const coords = coordsData[locationKey];
+        currentTarget = coords;
+        geoMarkerGroup.clearLayers();
+        
+        L.marker(coords, { icon: L.divIcon({ className: iconClass, iconSize: [40, 40], iconAnchor: [20, 20] }) }).addTo(geoMarkerGroup);
+        map.flyTo(coords, 15, { duration: 2.0 });
+        
+        vpTitle.innerText = `VIEWPORT // ${type.toUpperCase()} VECTOR`;
+        statusTag.innerText = `TARGET: ${name.toUpperCase()}`;
+        statusTag.style.borderColor = borderColor; statusTag.style.color = borderColor;
+        pushLog(`<b>[VECTOR_SYNC]:</b> Data uitgelezen voor <span style="color:${borderColor}">${name}</span>.`, logType);
+    }
+
+    function scanGeoData() {
+        if(tessLayer.style.display === 'flex' && !vpEngine.classList.contains('dual') && !vpEngine.classList.contains('hologram')) activateSingle('map');
+        
+        pushLog("<b>[GEO_SCAN]:</b> Initialiseer topografisch scan protocol...", "map");
+        const bounds = map.getBounds();
+        const center = map.getCenter();
+        
+        let delay = 500;
+        setTimeout(() => pushLog(`[SCAN] Center Target: LAT ${center.lat.toFixed(5)} // LON ${center.lng.toFixed(5)}`), delay);
+        delay += 600;
+        setTimeout(() => pushLog(`[SCAN] NW grens: LAT ${bounds.getNorthWest().lat.toFixed(4)} // LON ${bounds.getNorthWest().lng.toFixed(4)}`), delay);
+        delay += 600;
+        setTimeout(() => pushLog(`[SCAN] ZO grens: LAT ${bounds.getSouthEast().lat.toFixed(4)} // LON ${bounds.getSouthEast().lng.toFixed(4)}`), delay);
+        
+        delay += 800;
+        setTimeout(() => {
+            pushLog("<b>[SCAN_COMPLETE]:</b> Geografische datapunten succesvol uitgelezen.", "map");
+            const scanBox = L.rectangle([bounds.getNorthWest(), bounds.getNorthEast(), bounds.getSouthEast(), bounds.getSouthWest(), bounds.getNorthWest()], 
+                {color: 'var(--main)', weight: 2, dashArray: '10, 10', fillOpacity: 0.1, fillColor: 'var(--main)'}).addTo(map);
+            
+            let opacity = 0.1; let sweepInt = setInterval(() => { opacity += 0.05; if(opacity > 0.4) opacity = 0.1; scanBox.setStyle({fillOpacity: opacity}); }, 100);
+            setTimeout(() => { clearInterval(sweepInt); map.removeLayer(scanBox); }, 3000);
+        }, delay);
+    }
+
+    function toggleMarkerMode() {
+        if(tessLayer.style.display === 'flex' && !vpEngine.classList.contains('dual') && !vpEngine.classList.contains('hologram')) activateSingle('map');
+        
+        markerModeActive = !markerModeActive;
+        if(markerModeActive) {
+            vpEngine.classList.add('marker-mode');
+            statusTag.innerText = "DATA_POINT_MODE";
+            pushLog("<b>[MAP_TARGETING]:</b> Marker modus AAN. Klik op de kaart om datapunten vast te zetten.", "map");
+        } else {
+            vpEngine.classList.remove('marker-mode');
+            statusTag.innerText = vpEngine.classList.contains('hologram') ? "HOLO_OVERLAY_ACTIVE" : "GEO_MODE";
+            pushLog("<b>[MAP_TARGETING]:</b> Marker modus UIT.", "map");
+        }
+    }
+
+    // --- TESSERACT NAAR KAART PROJECTIE ---
+    function updateMapProjection(nodes, cx, cy) {
+        if (!projectToMap) return;
+        projectionLayerGroup.clearLayers();
+        let lines = [];
+        const scaleFactor = 0.00008;
+        const center = map.getCenter();
+
+        let geoNodes = nodes.map(n => {
+            let dLat = (n.y - cy) * -scaleFactor; 
+            let dLng = (n.x - cx) * scaleFactor;
+            return [center.lat + dLat, center.lng + dLng];
+        });
+
+        nodes.forEach((n1, i) => {
+            nodes.forEach((n2, j) => {
+                let diff = i ^ j;
+                if(diff === 1 || diff === 2 || diff === 4 || diff === 8) {
+                    lines.push([geoNodes[i], geoNodes[j]]);
+                }
+            });
+        });
+
+        L.polyline(lines, { color: 'var(--tesseract)', weight: 2, opacity: 0.8, dashArray: '5, 5' }).addTo(projectionLayerGroup);
+    }
+
+    // -- NATIVE TESSERACT ENGINE --
+    const canvas = document.getElementById('omniCanvas');
+    const ctx = canvas.getContext('2d');
+    let angle = 0, time = 0, isScanning = true, isLocked = false, flipStep = 0, polarAngle = 0, manualYaw = 0, manualPitch = 0.4;
+
+    function rotatePoint(x, y, z, pitch, yaw) {
+        let p = pitch, yA = yaw;
+        let qx = Math.sin(p) * Math.cos(yA), qy = Math.sin(yA) * Math.cos(p), qz = Math.sin(p) * Math.sin(yA), qw = Math.cos(p) * Math.cos(yA);
+        let ix = qw * x + qy * z - qz * y, iy = qw * y + qz * x - qx * z, iz = qw * z + qx * y - qy * x, iw = -qx * x - qy * y - qz * z;
+        return { x: ix * qw + iw * -qx + iy * -qz - iz * -qy, y: iy * qw + iw * -qy + iz * -qx - ix * -qz, z: iz * qw + iw * -qz + ix * -qy - iy * -qx };
+    }
+
+    function polarFlip() {
+        flipStep = (flipStep + 1) % 8; polarAngle = flipStep * (Math.PI / 4);
+        document.getElementById('dim-val').innerText = `PHASE-${flipStep} (${flipStep * 45}°)`;
+        pushLog(`<b>[ENGINE]:</b> Polar Flip: Phase-${flipStep}.`, "tess");
+    }
+
+    function drawHexagonTesseract(cx, cy, pitch, yaw) {
+        const size = vpEngine.classList.contains('dual') ? 70 : 140; 
+        const nodes = [];
+        
+        for(let i=0; i<16; i++) {
+            let x = (i & 1 ? 1 : -1) * size; let y = (i & 2 ? 1 : -1) * size;
+            let z = (i & 4 ? 1 : -1) * size; let w = (i & 8 ? 1 : -1) * size;
+            let x4 = x * Math.cos(polarAngle) - w * Math.sin(polarAngle);
+            let w4 = x * Math.sin(polarAngle) + w * Math.cos(polarAngle);
+            let p = rotatePoint(x4, y, z, pitch, yaw);
+            let f = 600 / (600 + p.z);
+            nodes.push({ x: cx + p.x * f, y: cy + p.y * f, f: f });
+        }
+
+        updateMapProjection(nodes, cx, cy);
+        if (projectToMap) return;
+
+        ctx.lineWidth = 1.5;
+        if(isLocked) ctx.strokeStyle = "rgba(0,0,0,0.7)";
+        else if(vpEngine.classList.contains('tracker-active')) ctx.strokeStyle = "rgba(255,0,255,0.8)"; 
+        else ctx.strokeStyle = "rgba(0, 255, 204, 0.8)";
+        
+        nodes.forEach((n1, i) => {
+            nodes.forEach((n2, j) => {
+                let diff = i ^ j;
+                if(diff === 1 || diff === 2 || diff === 4 || diff === 8) {
+                    ctx.beginPath(); ctx.moveTo(n1.x, n1.y); ctx.lineTo(n2.x, n2.y); ctx.stroke();
+                }
+            });
+        });
+    }
+
+    function renderTesseract() {
+        if(tessLayer.clientWidth !== canvas.width || tessLayer.clientHeight !== canvas.height) {
+            canvas.width = tessLayer.clientWidth; canvas.height = tessLayer.clientHeight;
+        }
+
+        const cx = canvas.width / 2, cy = canvas.height / 2;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        time += 0.015;
+
+        if(isScanning && !isLocked && !vpEngine.classList.contains('tracker-active')) angle += 0.01;
+        let degYaw = ((angle + manualYaw) * 180 / Math.PI) % 360;
+        if (degYaw < 0) degYaw += 360;
+        
+        document.getElementById('az-val').innerText = degYaw.toFixed(2) + "°";
+        document.getElementById('pitch-val').innerText = (manualPitch * 180 / Math.PI).toFixed(2) + "°";
+
+        if(isScanning && !vpEngine.classList.contains('tracker-active') && Math.abs(degYaw - 108) < 0.5) {
+            if(!isLocked) { 
+                isLocked = true; angle = 108 * Math.PI / 180; vpEngine.classList.add('white-lock');
+                document.getElementById('lock-stat').innerText = "SIRIUS-108";
+                pushLog("<b>[SYNC LOCK]:</b> Sirius 108° bereikt. Systeem locked.", "tess");
+            }
+        } else if (isScanning && isLocked && Math.abs(degYaw - 108) > 1.0) {
+            isLocked = false;
+        }
+
+        drawHexagonTesseract(cx, cy, isLocked ? 0.5 : manualPitch, angle + manualYaw);
+        requestAnimationFrame(renderTesseract);
+    }
+
+    // -- MUIS & TOETSENBORD TRACKER --
+    let isDragging = false; let lastX = 0, lastY = 0;
+    tracker.addEventListener('mousedown', (e) => { isDragging = true; lastX = e.clientX; lastY = e.clientY; tracker.focus(); });
+    tracker.addEventListener('mouseup', () => { isDragging = false; });
+    tracker.addEventListener('mouseleave', () => { isDragging = false; });
+    tracker.addEventListener('mousemove', (e) => {
+        if(isDragging && vpEngine.classList.contains('tracker-active')) {
+            let dx = e.clientX - lastX; let dy = e.clientY - lastY;
+            lastX = e.clientX; lastY = e.clientY;
+            manualYaw += dx * 0.01; manualPitch += dy * 0.01;
+            if (isLocked) { isLocked = false; vpEngine.classList.remove('white-lock'); document.getElementById('lock-stat').innerText = "MANUAL"; }
+        }
+    });
+
+    tracker.addEventListener('keydown', (e) => {
+        if(!vpEngine.classList.contains('tracker-active')) return;
+        if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
+        let s = 0.05; 
+        if(e.key === 'w' || e.key === 'ArrowUp') manualPitch -= s;
+        if(e.key === 's' || e.key === 'ArrowDown') manualPitch += s;
+        if(e.key === 'a' || e.key === 'ArrowLeft') manualYaw -= s;
+        if(e.key === 'd' || e.key === 'ArrowRight') manualYaw += s;
+        if (isLocked) { isLocked = false; vpEngine.classList.remove('white-lock'); document.getElementById('lock-stat').innerText = "MANUAL"; }
+    });
+
+    // -- CLI LOGICA --
+    function pushLog(msg, type = 'normal') {
+        const d = document.createElement('div');
+        if (type === 'tess') d.className = 'entry tess';
+        else if (type === 'klok') d.className = 'entry klok';
+        else if (type === 'map') d.className = 'entry map';
+        else if (type === 'kadaster') d.className = 'entry kadaster';
+        else if (type === 'tact') d.className = 'entry tact';
+        else if (type === 'neural') d.style.color = "var(--neural)";
+        d.className += ' entry'; d.innerHTML = `> ${msg}`;
+        stream.appendChild(d); stream.scrollTop = stream.scrollHeight;
+    }
+
+    function simulateCmd(cmdString) {
+        const input = document.getElementById('cli-input');
+        input.value = cmdString; handleCmd({ key: 'Enter', target: input });
+    }
+
+    function handleCmd(e) {
+        if (e.key === 'Enter') {
+            let val = e.target.value.trim().toLowerCase();
+            if (val === '') return;
+            pushLog(`<span style="color:var(--main)">USER_CMD: ${val}</span>`);
+            e.target.value = '';
+            
+            if(val === 'help' || val === '?') {
+                pushLog(`
+                <div style="color:var(--neural); margin-top:5px;">[SYSTEM COMMANDS]</div>
+                <table class="cmd-table">
+                  <tr><td>zoom in / zoom out</td><td>Navigeer dichterbij of verder van de kaart.</td></tr>
+                  <tr><td>map mark</td><td>Zet handmatig coördinaten/datapunten op de kaart.</td></tr>
+                  <tr><td>map scan</td><td>Scan huidige topografische data grenzen.</td></tr>
+                  <tr><td>map project</td><td>Projecteer de Tesseract op de kaart.</td></tr>
+                  <tr><td>dual</td><td>Opent Split-Screen modus.</td></tr>
+                  <tr><td>clear</td><td>Wist terminal buffer.</td></tr>
+                </table>`);
+            }
+            else if(val === 'zoom in') { map.zoomIn(); pushLog("<b>[MAP]:</b> Zoom In geactiveerd.", "map"); }
+            else if(val === 'zoom out') { map.zoomOut(); pushLog("<b>[MAP]:</b> Zoom Out geactiveerd.", "map"); }
+            else if(val === 'map mark' || val === 'mark') { toggleMarkerMode(); }
+            
+            else if(val === 'dual' || val === 'split') { vpEngine.classList.remove('kadaster-mode', 'tactical-mode'); activateDual(); }
+            else if(val === 'geo' || val === 'map') { vpEngine.classList.remove('kadaster-mode', 'tactical-mode'); activateSingle('map'); }
+            else if(val === 'map project' || val === 'project') {
+                if (projectToMap) activateSingle('tesseract'); // Toggle it off
+                else activateHologram(); // Toggle it on
+            }
+            else if(val === 'map scan' || val === 'scan map') scanGeoData();
+            
+            else if(val.includes('tactical') || val.includes('brug')) {
+                if(val.includes('raffinaderij') || val.includes('tholen')) loadPOI('raffinaderij', 'Brug / Raffinaderij Tholen', 'tactical');
+            }
+            else if(val.includes('kadaster')) {
+                if(val.includes('smd') || val.includes('maartensdijk')) loadPOI('smd', 'Sint-Maartensdijk (1832)', 'kadaster');
+                else if(val.includes('stavenisse')) loadPOI('stavenisse', 'Stavenisse (1832)', 'kadaster');
+                else if(val.includes('tholen')) loadPOI('tholen', 'Tholen Stad (1832)', 'kadaster');
+                else if(val.includes('scherpenisse')) loadPOI('scherpenisse', 'Scherpenisse (1832)', 'kadaster');
+                else if(val.includes('poortvliet')) loadPOI('poortvliet', 'Poortvliet (1832)', 'kadaster');
+                else pushLog(`<span style="color:#ff3344">Specificeer perceel: 'smd', 'stavenisse', 'tholen', 'scherpenisse' of 'poortvliet'.</span>`);
+            }
+            else if(val.startsWith('tesseract')) {
+                vpEngine.classList.remove('kadaster-mode', 'tactical-mode');
+                if (val.includes('override') || val.includes('mouse') || val.includes('wasd')) {
+                    if(!vpEngine.classList.contains('dual') && !vpEngine.classList.contains('hologram') && tessLayer.style.display !== 'flex') activateSingle('tesseract');
+                    vpEngine.classList.toggle('tracker-active');
+                    if(vpEngine.classList.contains('tracker-active')) {
+                        pushLog("<b>[MANUAL_OVERRIDE]:</b> Tracker aan. Klik en gebruik WASD.", "neural");
+                        tracker.focus(); document.getElementById('lock-stat').innerText = "MANUAL";
+                        vpEngine.classList.add('tracker-active');
+                    } else {
+                        pushLog("<b>[MANUAL_OVERRIDE]:</b> Tracker uit.", "neural");
+                        document.getElementById('lock-stat').innerText = isScanning ? "AUTO_SPIN" : "OFFLINE";
+                    }
+                }
+                else if (val.includes('scan')) toggleScan();
+                else if (val.includes('flip')) polarFlip();
+                else if (val.includes('init')) { activateSingle('tesseract'); pushLog("<b>[4D_CORE]:</b> Native Tesseract geactiveerd.", "tess"); } 
+                else pushLog(`<span style="color:#ff3344">ERROR: Onbekende parameter. Typ 'help'.</span>`);
+            }
+            else if(val === 'clear' || val === 'cls') stream.innerHTML = '';
+            else pushLog(`<span style="color:#ff3344">ERROR: Commando '${val}' niet herkend. Typ 'help'.</span>`);
+        }
+    }
+
+    // STARTUP
+    window.onload = () => {
+        initMap();
+        
+        // ZET HOLOGRAM ALS STANDAARD AAN OP THOLEN
+        activateHologram();
+        setTimeout(() => { setResonator(51.587, 4.074, 'Tholen 82.5° As'); }, 500);
+        
+        renderTesseract(); 
+    };
+</script>
+
+</body>
+</html>
