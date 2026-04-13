@@ -25,6 +25,7 @@
             --color-omni: #ffffff;
             --color-luopan: #e74c3c;
             --color-aes: #3498db;
+            --color-zero: #ff33aa;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -146,9 +147,11 @@
         .matrix-cell.faded { opacity: 0.15; filter: grayscale(100%);}
         .matrix-cell.target { background: rgba(0, 255, 204, 0.4); border-color: var(--text-main); transform: scale(1.15); z-index: 5; box-shadow: 0 0 20px var(--text-main); }
         .matrix-cell.target .m-bin { color: #fff; } .matrix-cell.target .m-dec { color: var(--text-main); }
-        .matrix-cell.symlink { background: rgba(255, 170, 0, 0.2); border-color: var(--color-gulden); box-shadow: inset 0 0 8px rgba(255,170,0,0.5);}
-        .matrix-cell.symlink .m-bin { color: var(--color-gulden); }
-        .matrix-cell.clone { background: rgba(176, 38, 255, 0.2); border-color: var(--color-gothiek); }
+        
+        /* 0-SEQUENCE GRID */
+        #zero-grid { grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(10, 1fr); gap: 1%; border: 1px solid var(--color-zero); }
+        .zero-cell { background: rgba(255, 51, 170, 0.05); border: 1px solid rgba(255, 51, 170, 0.2); display: flex; align-items: center; justify-content: center; font-family: monospace; font-size: clamp(0.6rem, 2vw, 1.2rem); color: var(--text-muted); transition: 0.1s; border-radius: 4px;}
+        .zero-cell.active { background: rgba(255, 51, 170, 0.4); border-color: var(--color-zero); color: #fff; box-shadow: 0 0 15px var(--color-zero); transform: scale(1.2); z-index: 10; font-weight: bold;}
 
         /* ELS LENINGRAD (Toracode) */
         #els-grid { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 2%; border-color: var(--color-terracotta); }
@@ -158,8 +161,6 @@
         .els-cell.faded { opacity: 0.25; filter: grayscale(80%); }
         .els-cell.target, .els-cell.skip { background: rgba(230, 126, 34, 0.15); border: 1px solid rgba(230, 126, 34, 0.8); z-index: 5; box-shadow: inset 0 0 15px rgba(230, 126, 34, 0.2); }
         .els-cell.target { transform: scale(1.1); background: rgba(230, 126, 34, 0.25); box-shadow: inset 0 0 20px rgba(230, 126, 34, 0.4), 0 0 25px rgba(230, 126, 34, 0.6); }
-        .els-cell.target .els-heb, .els-cell.skip .els-heb { color: #ffaa00; text-shadow: 0 0 10px rgba(255, 170, 0, 0.8); }
-        .els-cell.target .els-num, .els-cell.skip .els-num { color: #cc8833; }
 
         /* HEXAGRAM I TJING */
         #hexagram-grid { grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 1.5%; border-color: var(--color-gulden); }
@@ -179,8 +180,6 @@
         .uni-hex { font-size: clamp(0.5rem, 2vw, 0.8rem); color: var(--text-muted); font-weight: bold; margin-top: 4px; font-family: 'Courier New', monospace;}
         .uni-cell.faded { opacity: 0.25; filter: grayscale(80%); }
         .uni-cell.target { background: rgba(199, 116, 255, 0.25); border-color: var(--color-unicode); transform: scale(1.1); z-index: 5; box-shadow: inset 0 0 20px rgba(199, 116, 255, 0.4), 0 0 25px rgba(199, 116, 255, 0.6); }
-        .uni-cell.target .uni-char { color: #fff; text-shadow: 0 0 10px var(--color-unicode); }
-        .uni-cell.target .uni-hex { color: #fff; }
 
         /* OMNI CIPHER GRID */
         #omnicipher-grid { grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 1.5%; border: 1px solid var(--text-main); }
@@ -189,8 +188,6 @@
         .omni-hex { font-size: clamp(0.4rem, 1.5vw, 0.6rem); color: var(--text-muted); font-weight: bold; margin-top: 4px; font-family: 'Courier New', monospace; }
         .omni-cell.faded { opacity: 0.15; filter: grayscale(100%); }
         .omni-cell.target { background: rgba(0, 255, 204, 0.3); border-color: #fff; transform: scale(1.15); z-index: 5; box-shadow: 0 0 20px var(--text-main); }
-        .omni-cell.target .omni-char { color: #fff; text-shadow: 0 0 15px #fff; }
-        .omni-cell.target .omni-hex { color: #fff; }
 
         /* LUO PAN 17x17 GRID */
         #luopan-grid { grid-template-columns: repeat(17, 1fr); grid-template-rows: repeat(17, 1fr); gap: 1px; border: 1px solid var(--color-luopan); padding: 4px;}
@@ -264,6 +261,7 @@
                         
                         <li class="domain-group"><span class="caret">Domein 8: Cryptografie</span>
                             <ul class="nested hidden">
+                                <li class="node" onclick="loadModule('zero_sequence')" style="color: var(--color-zero); font-weight:bold;">├─ 0-SEQUENCE [Active Loop]</li>
                                 <li class="node" onclick="loadModule('els_hebrew')" style="color: var(--color-terracotta);">├─ Tora ELS [586 v.Chr]</li>
                                 <li class="node" onclick="loadModule('vigenere')" style="color: #ff3333;">├─ Vigenère Tabula Recta</li>
                                 <li class="node" onclick="loadModule('pigpen')" style="color: #00ffcc;">├─ Vrijmetselaars Balken</li>
@@ -321,6 +319,7 @@
                 
                 <div id="matrix-grid" class="overlay-grid"></div>
                 <div id="els-grid" class="overlay-grid"></div>
+                <div id="zero-grid" class="overlay-grid"></div>
                 <div id="hexagram-grid" class="overlay-grid"></div>
                 <div id="unicode-grid" class="overlay-grid"></div>
                 <div id="omnicipher-grid" class="overlay-grid"></div>
@@ -360,7 +359,6 @@
             }
         };
 
-        // Advanced Quaternion voor 3D Engine (Tesseract)
         class QuaternionMath {
             constructor(w=1, x=0, y=0, z=0) { this.w=w; this.x=x; this.y=y; this.z=z; }
             multiply(q) {
@@ -460,6 +458,14 @@
             gulden_as: { title: "Gulden As (Phi)", desc: "Harmonische helling 1:3.", azimuth: "161.6", grid: "[40.4 MOD]", color: "#ffaa00", type: "polar" },
             klokbeker_6d: { title: "Klokbeker 6D Matrix", desc: "B(6) Hyper-Raster projectie.", azimuth: "161.6", grid: "[6D Matrix]", color: "#00ffcc", type: "hypergrid" },
             
+            zero_sequence: {
+                title: "0-SEQUENCE [ACTIVE ELS LOOP]",
+                desc: "Mode 0 auralisatie actief. Raster-indexen genereren frequentiespanning (Index &times; 4).",
+                azimuth: "288.0",
+                grid: "[10x10 ELS Tracker]",
+                color: "#ff33aa",
+                type: "zerogrid"
+            },
             els_hebrew: { 
                 title: "ELS TORA DECRYPTOR [586 v.Chr]", 
                 desc: "Equidistant Letter Sequence (ELS) gebaseerd op een determenistische VORTEX-matrix.", 
@@ -569,14 +575,75 @@
             const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
             osc.frequency.value = freq; osc.connect(gain); gain.connect(audioCtx.destination);
             gain.gain.setValueAtTime(0.1, audioCtx.currentTime); 
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
-            osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.0);
+            osc.start(); osc.stop(audioCtx.currentTime + 1.0);
         }
 
         // --- 5. HTML MODULE BUILDERS ---
         function toBin(n) { return n.toString(2).padStart(6, '0'); }
         function getHW(n) { let w=0; for(let i=0; i<6; i++) if(n & (1<<i)) w++; return w; }
         function getOrbit(n) { let m=n, c=n; for(let i=0;i<6;i++){ c=((c<<1)|(c>>5))&63; if(c<m) m=c; } return m; }
+
+        // --- 0-SEQUENCE [ACTIVE ELS LOOP] ---
+        const zeroGrid = document.getElementById('zero-grid');
+        let zeroInit = false;
+        let zeroInterval = null;
+        let zeroIndex = 0;
+        const zeroSeq = ['0', 'S', 'E', 'Q', 'U', 'E'];
+
+        function buildZeroSequence() {
+            if (zeroInit) return;
+            for(let i=0; i<100; i++) {
+                let cell = document.createElement('div');
+                cell.className = 'zero-cell';
+                cell.id = `zcell-${i}`;
+                cell.innerText = zeroSeq[i % 6];
+                zeroGrid.appendChild(cell);
+            }
+            zeroInit = true;
+        }
+
+        function stopZeroLoop() {
+            if (zeroInterval) { clearInterval(zeroInterval); zeroInterval = null; }
+        }
+
+        function runZeroLoop() {
+            stopZeroLoop();
+            zeroIndex = 0;
+            zeroInterval = setInterval(() => {
+                if(currentModule !== 'zero_sequence') { stopZeroLoop(); return; }
+
+                let oldCell = document.getElementById(`zcell-${zeroIndex}`);
+                if(oldCell) oldCell.className = 'zero-cell';
+
+                zeroIndex = (zeroIndex + 1) % 100;
+
+                let newCell = document.getElementById(`zcell-${zeroIndex}`);
+                if(newCell) newCell.className = 'zero-cell active';
+
+                let freq = zeroIndex * 4;
+                if(freq < 20) freq = 20; 
+
+                playFreq(freq); 
+
+                let char = zeroSeq[zeroIndex % 6];
+                document.getElementById("detail-content").innerHTML = `
+                    <h3 style="color:var(--color-zero); margin-top:0;">> 0-SEQUENCE [ACTIVE LOOP]</h3>
+                    <div class="data-row"><div class="data-label">HUIDIGE INDEX:</div><div class="data-value">${zeroIndex}</div></div>
+                    <div class="data-row"><div class="data-label">FREQ SPANNING:</div><div class="data-value" style="color:var(--text-main); font-weight:bold;">${freq} Hz</div></div>
+                    <div class="data-row"><div class="data-label">DECODED CHAR:</div><div class="data-value" style="font-size:2rem; color:var(--color-zero); text-shadow:0 0 10px var(--color-zero);">${char}</div></div>
+                    <div class="lore-box" style="border-top-color: var(--color-zero);">
+                        <h4 style="color:var(--color-zero);">Numerical Trinity</h4>
+                        <p style="color:#aaa; font-size:0.8rem;">
+                        <b>108</b> (1+0+8 = 9)<br>
+                        <b>288</b> (2+8+8 = 18 &rarr; 9)<br>
+                        <b>432</b> (4+3+2 = 9)<br><br>
+                        De 288&deg; ruimtelijke as zendt wiskundig een Reine Kwint (2:3 verhouding, 288 Hz) uit naar het 432 Hz "Stasis_Locked" anker.
+                        </p>
+                    </div>
+                `;
+            }, 350); 
+        }
 
         // --- 3D B(6) TESSERACT DIRECTORY LOGICA ---
         let tessNodes = [], tessEdges = [];
@@ -876,6 +943,8 @@
             if(window.innerWidth < 1024) toggleMenu(); 
             currentModule = id; const d = vortexData[id];
             
+            stopZeroLoop();
+
             if(id === 'gamuungell') play108Resonance();
             else initAudio();
 
@@ -915,13 +984,14 @@
             }
 
             // Reset UI
-            matrixGrid.style.display = 'none'; elsGrid.style.display = 'none'; hexGrid.style.display = 'none'; unicodeGrid.style.display = 'none'; omniGrid.style.display = 'none'; luoGrid.style.display = 'none'; document.getElementById('aes-grid').style.display = 'none'; canvas.style.display = 'none';
+            matrixGrid.style.display = 'none'; elsGrid.style.display = 'none'; zeroGrid.style.display = 'none'; hexGrid.style.display = 'none'; unicodeGrid.style.display = 'none'; omniGrid.style.display = 'none'; luoGrid.style.display = 'none'; document.getElementById('aes-grid').style.display = 'none'; canvas.style.display = 'none';
             document.getElementById('tess-tooltip').style.display = 'none';
             if (animFrame) cancelAnimationFrame(animFrame);
 
             // Router
             if (d.type === 'hypergrid') { matrixGrid.style.display = 'grid'; buildMatrix(); for(let i=0; i<64; i++) document.getElementById(`mcell-${i}`).className = 'matrix-cell'; } 
             else if (d.type === 'elsgrid') { elsGrid.style.display = 'grid'; buildEls(); for(let i=0; i<25; i++) document.getElementById(`ecell-${i}`).className = 'els-cell'; } 
+            else if (d.type === 'zerogrid') { zeroGrid.style.display = 'grid'; buildZeroSequence(); runZeroLoop(); }
             else if (d.type === 'hexgrid') { hexGrid.style.display = 'grid'; buildHex(); for(let i=0; i<64; i++) document.getElementById(`hcell-${i}`).className = 'hex-cell'; } 
             else if (d.type === 'unicodegrid') { unicodeGrid.style.display = 'grid'; buildUnicodeMatrix(); for(let i=0; i<25; i++) document.getElementById(`ucell-${i}`).className = 'uni-cell'; }
             else if (d.type === 'omnigrid') { omniGrid.style.display = 'grid'; buildOmniCipher(); for(let i=0; i<64; i++) document.getElementById(`ocell-${i}`).className = 'omni-cell'; }
