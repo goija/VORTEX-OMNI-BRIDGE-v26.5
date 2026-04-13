@@ -3,37 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VORTEX v136.0 // LONGITUDINAL FLIP</title>
+    <title>VORTEX v148.0 // ABSOLUTE GROUND LOCK</title>
     <style>
         :root {
-            --sirius: #ff33aa; --main: #00ffcc; --bg: #ffffff;
+            --sun: #ffcc00; --moon: #ffffff; --planet: #ff5555; --star: #aaddff; 
+            --cyan: #00ffcc; --magenta: #ff33aa; --bg: #000000;
             --font: 'Courier New', monospace;
         }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: var(--font); color: #000; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: var(--font); color: var(--cyan); }
         
         .ui-panel {
-            position: absolute; bottom: 20px; right: 20px; z-index: 10;
-            width: 320px; background: rgba(255, 255, 255, 0.95); border: 2px solid #000;
-            padding: 15px; box-shadow: -8px 8px 0px #000;
+            position: absolute; top: 20px; left: 20px; z-index: 10;
+            width: 400px; background: rgba(0, 0, 0, 0.85); border: 1px solid var(--magenta);
+            padding: 20px; box-shadow: 0px 0px 30px rgba(255, 51, 170, 0.1);
         }
 
-        .flip-header { background: #000; color: #fff; padding: 8px; text-align: center; font-weight: bold; text-transform: uppercase; }
-        .data-stream { font-size: 0.75rem; line-height: 1.5; border-top: 1px solid #000; padding-top: 10px; margin-top: 10px; }
-        .focus-label { font-weight: bold; color: var(--sirius); }
+        .header { background: var(--magenta); color: #000; padding: 10px; text-align: center; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; font-size: 1.1rem;}
+        .clock { font-size: 2rem; font-weight: bold; text-align: center; margin-top: 15px; margin-bottom: 15px; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.3);}
+        .ms-clock { font-size: 1rem; color: var(--magenta); }
         
+        .divider { border-top: 1px dashed var(--magenta); margin: 15px 0; }
+        
+        .data-stream { font-size: 0.8rem; line-height: 1.6; }
+        .label { font-weight: bold; color: var(--magenta); }
+        
+        .grid-status { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; background: rgba(0, 255, 204, 0.05); padding: 15px; border: 1px solid rgba(0, 255, 204, 0.2); }
+        .grid-status div { color: var(--cyan); }
+        .grid-status span { color: #fff; font-weight: bold; }
+
+        .log { font-size: 0.7rem; color: #666; margin-top: 15px; font-style: italic; }
+
         canvas { display: block; width: 100vw; height: 100vh; }
     </style>
 </head>
 <body>
 
     <div class="ui-panel">
-        <div class="flip-header">FLIP: OOST-WEST 180°</div>
+        <div class="header">ABSOLUTE GROUND LOCK</div>
+        <div class="clock"><span id="sys-time">00:00:00</span> <span class="ms-clock" id="sys-ms">.000</span></div>
+        <div class="divider"></div>
         <div class="data-stream">
-            <b>MODUS:</b> Longitudinale Inversie<br>
-            <span class="focus-label">Sirius-Vector:</span> Nu Linkerboven (Inverted East)<br>
-            <b>NEXUS:</b> De Mees 27, Laren<br>
-            <hr>
-            <i style="font-size:0.65rem;">> Horizontale as gespiegeld...<br>> Verticale as (S-Top) behouden.</i>
+            <span class="label">NEXUS:</span> De Mees 27, Laren<br>
+            <span class="label">MODUS:</span> OMNI-DAY TRACKER (Live Ephemeris)<br>
+            
+            <div class="grid-status">
+                <div>ZUID: <span>BOVEN (Top)</span></div>
+                <div>NOORD: <span>ONDER (Bottom)</span></div>
+                <div>OOST: <span>LINKS</span></div>
+                <div>WEST: <span>RECHTS</span></div>
+            </div>
+
+            <div class="log">
+                > Kompas losgekoppeld van hemelkoepel.<br>
+                > Observatorium-grid is nu statisch gefixeerd.<br>
+                > X-Y spiegeling 100% gekalibreerd.
+            </div>
         </div>
     </div>
 
@@ -42,90 +66,186 @@
     <script>
         const canvas = document.getElementById('vortexCanvas');
         const ctx = canvas.getContext('2d');
-        let time = 0;
-        
-        // Sirius Azimuth aangepast voor de nieuwe links-georiënteerde Oost
-        const targetAngle = 225 * (Math.PI / 180); // Richting linkerboven
 
-        function project4D(x, y, z, w, pitch, yaw) {
+        // --- DATABASE GENERATIE ---
+        const stars = [];
+        const zodiacNames = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
+        for(let i=0; i<12; i++) { stars.push({ ra: (i * 30), dec: Math.sin(i * Math.PI/6) * 23.5, name: zodiacNames[i], type: 'zodiac', color: '#4466aa' }); }
+        
+        const bigStars = [
+            {ra: 101, dec: -16, name: "Sirius"}, {ra: 279, dec: 38, name: "Vega"}, {ra: 310, dec: 45, name: "Deneb"}
+        ];
+        bigStars.forEach(s => stars.push({ ra: s.ra, dec: s.dec, name: s.name, type: 'anchor', color: '#ffffff' }));
+        
+        for(let i=0; i<250; i++) {
+            stars.push({ ra: Math.random() * 360, dec: (Math.random() * 180) - 90, name: "", type: 'bg', color: `rgba(255,255,255,${Math.random() * 0.4})` });
+        }
+
+        const planets = [
+            { name: "Mercurius", speed: 88, dist: 140, color: "#aaaaaa", size: 3 },
+            { name: "Venus", speed: 224, dist: 200, color: "#ffddaa", size: 4 },
+            { name: "Mars", speed: 687, dist: 380, color: "#ff5555", size: 4 },
+            { name: "Jupiter", speed: 4332, dist: 520, color: "#ffaa55", size: 7 },
+            { name: "Saturnus", speed: 10759, dist: 650, color: "#eedd88", size: 6 }
+        ];
+
+        // --- DEFINITIEVE PROJECTIE ENGINE v148 ---
+        function projectOmni(x, y, z, w, pitch, yaw) {
             let x4 = x * Math.cos(Math.PI/4) - w * Math.sin(Math.PI/4);
             let w4 = x * Math.sin(Math.PI/4) + w * Math.cos(Math.PI/4);
-            let cosY = Math.cos(yaw), sinY = Math.sin(yaw);
-            let cosP = Math.cos(pitch), sinP = Math.sin(pitch);
             
-            let yA = y * cosP - z * sinP;
-            let zA = y * sinP + z * cosP;
-            let xA = x4 * cosY - zA * sinY;
-            let zB = x4 * sinY + zA * cosY;
+            let x1 = x4 * Math.cos(yaw) - z * Math.sin(yaw);
+            let z1 = x4 * Math.sin(yaw) + z * Math.cos(yaw);
             
-            let f = 900 / (900 + zB + w4);
-
-            // --- VORTEX CALIBRATION v136 ---
-            // 1. Oost-West 180° draai: xA wordt -xA (West-Rechts / Oost-Links)
-            // 2. Zuid-Noord behouden (S-Top): yA blijft -yA (van vorige inversie)
-            return { x: -xA * f, y: -yA * f, s: f };
+            let y2 = y * Math.cos(pitch) - z1 * Math.sin(pitch);
+            let z2 = y * Math.sin(pitch) + z1 * Math.cos(pitch);
+            
+            let f = 1000 / (1000 + z2 + w4);
+            
+            // ABSOLUTE KALIBRATIE:
+            // x: -x1 -> +X (Oost) gaat naar Links, -X (West) gaat naar Rechts.
+            // y: y2 -> +Z (Zuid) creëert een negatieve y2-waarde. Deze brengen we direct naar het canvas zodat het Top (Boven) wordt.
+            return { x: -x1 * f, y: y2 * f, s: f, z: z2 };
         }
+
+        function raDecToXYZ(ra, dec, radius) {
+            let raRad = ra * (Math.PI / 180);
+            let decRad = dec * (Math.PI / 180);
+            return {
+                x: radius * Math.cos(decRad) * Math.cos(raRad), // X is Oost-West as
+                y: radius * Math.sin(decRad),
+                z: radius * Math.cos(decRad) * Math.sin(raRad)  // Z is Noord-Zuid as
+            };
+        }
+
+        function formatTime(date) { return date.toLocaleTimeString('nl-NL', { hour12: false }); }
 
         function animate() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             const cx = canvas.width / 2, cy = canvas.height / 2;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            time += 0.01;
+            
+            const now = new Date();
+            const ms = now.getMilliseconds();
+            const totalSeconds = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds() + (ms / 1000);
+            
+            document.getElementById('sys-time').innerText = formatTime(now);
+            document.getElementById('sys-ms').innerText = "." + ms.toString().padStart(3, '0');
 
-            const size = 180;
-            const nodes = [];
+            const globalYaw = (totalSeconds / 86400) * (Math.PI * 2);
             const pitch = 0.5;
-            const yaw = time * 0.3;
 
-            // 1. Inverted Tesseract
-            for (let i = 0; i < 16; i++) {
-                let x = (i & 1 ? 1 : -1) * size;
-                let y = (i & 2 ? 1 : -1) * size;
-                let z = (i & 4 ? 1 : -1) * size;
-                let w = (i & 8 ? 1 : -1) * size;
-                nodes.push(project4D(x, y, z, w, pitch, yaw));
+            // 1. STERRENKOEPEL (Draait met de tijd)
+            ctx.font = "10px Courier New";
+            stars.forEach(star => {
+                let pos = raDecToXYZ(star.ra, star.dec, 1000);
+                let p = projectOmni(pos.x, pos.y, pos.z, 0, pitch, globalYaw);
+                if (p.z > -900) {
+                    ctx.globalAlpha = Math.min(1, (p.z + 900) / 400);
+                    ctx.fillStyle = star.color;
+                    let r = star.type === 'bg' ? 1 : (star.type === 'anchor' ? 2 : 1.5);
+                    ctx.beginPath(); ctx.arc(cx + p.x, cy + p.y, r * p.s, 0, Math.PI*2); ctx.fill();
+                    if (star.name) { ctx.fillText(star.name, cx + p.x + 6, cy + p.y + 4); }
+                    ctx.globalAlpha = 1.0;
+                }
+            });
+
+            // 2. HELIOS (ZON)
+            let sunAngle = ((totalSeconds / 86400) * 360) - 90; 
+            let sunPos = raDecToXYZ(sunAngle, 0, 700); 
+            let sunP = projectOmni(sunPos.x, sunPos.y, sunPos.z, 0, pitch, globalYaw);
+            if(sunP.z > -900) {
+                ctx.fillStyle = "var(--sun)";
+                ctx.beginPath(); ctx.arc(cx + sunP.x, cy + sunP.y, 22 * sunP.s, 0, Math.PI*2); ctx.fill();
+                ctx.shadowBlur = 25; ctx.shadowColor = "var(--sun)"; ctx.fill(); ctx.shadowBlur = 0; 
+                ctx.fillStyle = "#fff"; ctx.font = "bold 13px Courier New"; ctx.fillText("HELIOS", cx + sunP.x + 25, cy + sunP.y);
             }
 
-            // Edges
-            ctx.lineWidth = 1; ctx.strokeStyle = "rgba(0,0,0,0.1)";
-            nodes.forEach((n1, i) => {
-                nodes.forEach((n2, j) => {
+            // 3. LUNA (MAAN)
+            let moonOffset = (now.getDate() / 29.5) * 360; 
+            let moonPos = raDecToXYZ(sunAngle - moonOffset, 5, 600); 
+            let moonP = projectOmni(moonPos.x, moonPos.y, moonPos.z, 0, pitch, globalYaw);
+            if(moonP.z > -900) {
+                ctx.fillStyle = "var(--moon)";
+                ctx.beginPath(); ctx.arc(cx + moonP.x, cy + moonP.y, 15 * moonP.s, 0, Math.PI*2); ctx.fill(); 
+                ctx.fillStyle = "#fff"; ctx.font = "bold 13px Courier New"; ctx.fillText("LUNA", cx + moonP.x + 20, cy + moonP.y);
+            }
+
+            // 4. PLANETEN
+            planets.forEach((pl, idx) => {
+                let angle = (totalSeconds * (1000 / pl.speed)) % 360;
+                let plPos = raDecToXYZ(angle, Math.sin(idx)*10, pl.dist);
+                let p = projectOmni(plPos.x, plPos.y, plPos.z, 0, pitch, globalYaw);
+                if(p.z > -900) {
+                    ctx.globalAlpha = Math.min(1, (p.z + 900) / 400);
+                    ctx.fillStyle = pl.color;
+                    ctx.beginPath(); ctx.arc(cx + p.x, cy + p.y, pl.size * p.s, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = "#fff"; ctx.font = "bold 11px Courier New"; ctx.fillText(pl.name, cx + p.x + 10, cy + p.y + 4);
+                    ctx.globalAlpha = 1.0;
+                }
+            });
+
+            // 5. 3D KOMPAS - GROUND LOCKED
+            // Let op: yaw is hier 0. Het kompas draait NIET meer met de aarde mee.
+            const cr = 350;
+            ctx.strokeStyle = "rgba(0, 255, 204, 0.15)"; ctx.lineWidth = 1;
+            ctx.beginPath();
+            for(let a=0; a<=Math.PI*2; a+=0.1) {
+                let p = projectOmni(Math.sin(a)*cr, 0, Math.cos(a)*cr, 0, pitch, 0); 
+                if(a===0) ctx.moveTo(cx + p.x, cy + p.y); else ctx.lineTo(cx + p.x, cy + p.y);
+            }
+            ctx.closePath(); ctx.stroke();
+
+            // As definities: +Z is Zuid, +X is Oost
+            const points = [
+                {a: 0, l: "ZUID (TOP)", c: "var(--cyan)"},          // a=0 = +Z
+                {a: Math.PI/2, l: "OOST (LINKS)", c: "var(--cyan)"}, // a=PI/2 = +X
+                {a: Math.PI, l: "NOORD (BOTTOM)", c: "var(--cyan)"}, // a=PI = -Z
+                {a: -Math.PI/2, l: "WEST (RECHTS)", c: "var(--cyan)"}// a=-PI/2 = -X
+            ];
+
+            ctx.textAlign = "center";
+            points.forEach(pt => {
+                let p = projectOmni(Math.sin(pt.a)*cr, 0, Math.cos(pt.a)*cr, 0, pitch, 0); // Yaw = 0
+                let c = projectOmni(0, 0, 0, 0, pitch, 0);
+                
+                // Assen tekenen vanuit centrum
+                ctx.strokeStyle = "rgba(0, 255, 204, 0.1)";
+                ctx.beginPath(); ctx.moveTo(cx + c.x, cy + c.y); ctx.lineTo(cx + p.x, cy + p.y); ctx.stroke();
+                
+                // Labels plaatsen
+                ctx.fillStyle = "#fff"; ctx.font = "bold 14px Courier New";
+                ctx.globalAlpha = Math.min(1, Math.max(0.3, (p.z + 500) / 500));
+                ctx.fillText(pt.l, cx + p.x, cy + p.y - 15);
+            });
+            ctx.globalAlpha = 1.0;
+            ctx.textAlign = "left";
+
+            // 6. TESSERACT CORE (4D Resonator draait autonoom)
+            const tSize = 80;
+            const tNodes = [];
+            const pulse = 1 + Math.sin((ms / 1000) * Math.PI * 2) * 0.05; 
+            for (let i = 0; i < 16; i++) {
+                let x = (i & 1 ? 1 : -1) * (tSize * pulse);
+                let y = (i & 2 ? 1 : -1) * (tSize * pulse);
+                let z = (i & 4 ? 1 : -1) * (tSize * pulse);
+                let w = (i & 8 ? 1 : -1) * (tSize * pulse);
+                tNodes.push(projectOmni(x, y, z, w, pitch, totalSeconds*0.2));
+            }
+            
+            ctx.lineWidth = 1; ctx.strokeStyle = `rgba(0, 255, 204, ${0.15 + (pulse-1)*2})`;
+            tNodes.forEach((n1, i) => {
+                tNodes.forEach((n2, j) => {
                     if ((i ^ j) === 1 || (i ^ j) === 2 || (i ^ j) === 4 || (i ^ j) === 8) {
                         ctx.beginPath(); ctx.moveTo(cx + n1.x, cy + n1.y); ctx.lineTo(cx + n2.x, cy + n2.y); ctx.stroke();
                     }
                 });
             });
 
-            // 2. Sirius-Anker: LINKERBOVENKANT (Door Oost-Flip)
-            const sx = Math.cos(targetAngle) * 400; 
-            const sy = Math.sin(targetAngle) * 400;
-
-            ctx.strokeStyle = "var(--sirius)"; ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + sx, cy + sy); ctx.stroke();
-            
-            ctx.fillStyle = "var(--sirius)"; ctx.beginPath(); ctx.arc(cx + sx, cy + sy, 10, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = "#000"; ctx.font = "bold 12px Courier New";
-            ctx.fillText("SIRIUS (TOP-L)", cx + sx + 20, cy + sy + 5);
-
-            // 3. Directional Labels (180° Longitude Flip)
-            ctx.font = "bold 16px Courier New"; ctx.fillStyle = "#000";
-            ctx.fillText("ZUID (TOP)", cx - 45, 40);
-            ctx.fillText("NOORD (BOTTOM)", cx - 60, canvas.height - 30);
-            ctx.fillText("OOST (L)", 30, cy);
-            ctx.fillText("WEST (R)", canvas.width - 100, cy);
-
-            // 4. Halo (48 nodes)
-            const haloR = Math.sqrt(34850);
-            for(let i=0; i<48; i++) {
-                let a = i * (Math.PI * 2 / 48);
-                let p = project4D(Math.cos(a)*haloR, Math.sin(time+i)*12, Math.sin(a)*haloR, 0, pitch, yaw);
-                ctx.fillStyle = "rgba(0, 102, 136, 0.4)";
-                ctx.beginPath(); ctx.arc(cx + p.x, cy + p.y, 2 * p.s, 0, Math.PI*2); ctx.fill();
-            }
-
             requestAnimationFrame(animate);
         }
+        
         animate();
     </script>
 </body>
