@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VORTEX v148.1 // ABSOLUTE GROUND LOCK (Laren)</title>
+    <title>VORTEX v148.11 // GLOBAL ANCHOR & DEEP SPACE (Laren)</title>
     <style>
         :root {
             --sun: #ffcc00; --moon: #ffffff; --planet: #ff5555; --star: #aaddff; 
             --cyan: #00ffcc; --magenta: #ff33aa; --bg: #000000; --phi: #ffaa00;
+            --exo: #66ff99; --deepsky: #cc99ff; --landmark: #ffffff; --us: #ff5555;
             --font: 'Courier New', monospace;
         }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: var(--font); color: var(--cyan); }
         
         .ui-panel {
             position: absolute; top: 20px; left: 20px; z-index: 10;
-            width: 400px; background: rgba(0, 0, 0, 0.85); border: 1px solid var(--magenta);
-            padding: 20px; box-shadow: 0px 0px 30px rgba(255, 51, 170, 0.1);
+            width: 440px; background: rgba(0, 0, 0, 0.85); border: 1px solid var(--magenta);
+            padding: 20px; box-shadow: 0px 0px 30px rgba(255, 51, 170, 0.15);
         }
 
         .header { background: var(--magenta); color: #000; padding: 10px; text-align: center; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; font-size: 1.1rem;}
@@ -31,7 +32,7 @@
         .grid-status div { color: var(--cyan); }
         .grid-status span { color: #fff; font-weight: bold; }
 
-        .log { font-size: 0.7rem; color: #666; margin-top: 15px; font-style: italic; }
+        .log { font-size: 0.7rem; color: #666; margin-top: 15px; font-style: italic; height: 120px; overflow-y: hidden; }
 
         canvas { display: block; width: 100vw; height: 100vh; }
     </style>
@@ -39,12 +40,12 @@
 <body>
 
     <div class="ui-panel">
-        <div class="header">ABSOLUTE GROUND LOCK</div>
+        <div class="header">GLOBAL ANCHOR & DEEP SPACE</div>
         <div class="clock"><span id="sys-time">00:00:00</span> <span class="ms-clock" id="sys-ms">.000</span></div>
         <div class="divider"></div>
         <div class="data-stream">
             <span class="label">NEXUS:</span> De Mees 27, Laren (52.255° N)<br>
-            <span class="label">MODUS:</span> OMNI-DAY TRACKER (Live Ephemeris)<br>
+            <span class="label">MODUS:</span> OMNI-TRACKER v11.0<br>
             
             <div class="grid-status">
                 <div>ZUID: <span>BOVEN (Top)</span></div>
@@ -53,12 +54,12 @@
                 <div>WEST: <span>RECHTS</span></div>
             </div>
 
-            <div class="log">
-                > Hemelkoepel gekoppeld aan Laren coördinaten.<br>
-                > Astrometrie Engine v2.0 geactiveerd (True LMST).<br>
-                > Actieve as: Grote Kerk / Tholen (82.5°)<br>
-                > Actieve as: Pijl op 29°<br>
-                > REALTIME AZIMUTH & TIJD LABELS GEACTIVEERD.
+            <div class="log" id="log-box">
+                > POOLSTER (Polaris) & MAAGD (Virgo) toegevoegd.<br>
+                > Zwaan (Deneb) bevestigd online.<br>
+                > Nieuwe Grond-Vectoren berekend...<br>
+                > Hildernisse (222.5°), Westkerke (231.1°), Scherpenisse (231.8°) ge-lockt.<br>
+                > Systeem volledig synchroon met kosmos en aarde.
             </div>
         </div>
     </div>
@@ -69,289 +70,235 @@
         const canvas = document.getElementById('vortexCanvas');
         const ctx = canvas.getContext('2d');
 
-        // --- 1. CONFIGURATIE & ASTRONOMIE ---
-        const LAREN_LAT = 52.255;
-        const LAREN_LON = 5.226;
+        // --- 1. DATABASE ---
+        const LAREN_LAT = 52.255; const LAREN_LON = 5.226;
         
+        // Constellaties (inclusief Kleine Beer voor Poolster, en Maagd)
         const constellations = [
-            { name: "Orion", color: "rgba(0, 255, 204, 0.5)",
-                stars: [{ra:88.7,dec:7.4,name:"Betelgeuze"},{ra:78.6,dec:-8.2,name:"Rigel"},{ra:81.2,dec:6.3,name:"Bellatrix"},{ra:86.9,dec:-9.6,name:"Saiph"},{ra:84.0,dec:-1.2,name:"Alnilam"},{ra:83.0,dec:-0.3,name:"Mintaka"},{ra:85.1,dec:-1.9,name:"Alnitak"}],
-                lines: [[0,2],[0,6],[2,5],[5,6],[6,4],[4,5],[6,3],[5,1],[3,1]] },
-            { name: "Ursa Major", color: "rgba(255, 153, 0, 0.5)",
-                stars: [{ra:165.9,dec:61.7,name:"Dubhe"},{ra:165.4,dec:56.3,name:"Merak"},{ra:178.4,dec:53.6,name:"Phecda"},{ra:183.8,dec:57.0,name:"Megrez"},{ra:193.5,dec:55.9,name:"Alioth"},{ra:200.9,dec:54.9,name:"Mizar"},{ra:206.8,dec:49.3,name:"Alkaid"}],
-                lines: [[0,1],[1,2],[2,3],[3,0],[3,4],[4,5],[5,6]] },
-            { name: "Leo", color: "rgba(255, 51, 170, 0.5)",
-                stars: [{ra:152.0,dec:11.9,name:"Regulus"},{ra:177.2,dec:14.5,name:"Denebola"},{ra:154.9,dec:19.8,name:"Algieba"},{ra:168.5,dec:20.5,name:"Zosma"}],
-                lines: [[0,2],[2,3],[3,1],[1,0]] }
+            { name: "Orion", color: "rgba(0, 255, 204, 0.5)", stars: [{ra:88.7,dec:7.4,name:"Betelgeuze"},{ra:78.6,dec:-8.2,name:"Rigel"},{ra:81.2,dec:6.3,name:"Bellatrix"},{ra:86.9,dec:-9.6,name:"Saiph"},{ra:84.0,dec:-1.2,name:"Alnilam"},{ra:83.0,dec:-0.3,name:"Mintaka"},{ra:85.1,dec:-1.9,name:"Alnitak"}], lines: [[0,2],[0,6],[2,5],[5,6],[6,4],[4,5],[6,3],[5,1],[3,1]] },
+            { name: "Ursa Major", color: "rgba(255, 153, 0, 0.5)", stars: [{ra:165.9,dec:61.7,name:"Dubhe"},{ra:165.4,dec:56.3,name:"Merak"},{ra:178.4,dec:53.6,name:"Phecda"},{ra:183.8,dec:57.0,name:"Megrez"},{ra:193.5,dec:55.9,name:"Alioth"},{ra:200.9,dec:54.9,name:"Mizar"},{ra:206.8,dec:49.3,name:"Alkaid"}], lines: [[0,1],[1,2],[2,3],[3,0],[3,4],[4,5],[5,6]] },
+            { name: "Kleine Beer", color: "rgba(255, 255, 255, 0.8)", stars: [{ra:37.9,dec:89.2,name:"POOLSTER"},{ra:222.7,dec:74.1,name:"Kochab"}], lines: [[0,1]] },
+            { name: "Maagd", color: "rgba(255, 200, 100, 0.5)", stars: [{ra:201.3,dec:-11.1,name:"Spica"},{ra:190.4,dec:-1.4,name:"Porrima"},{ra:195.5,dec:10.9,name:"Vindemiatrix"},{ra:177.7,dec:1.7,name:"Zavijava"}], lines: [[0,1],[1,2],[1,3]] },
+            { name: "Cassiopeia", color: "rgba(100, 200, 255, 0.5)", stars: [{ra:14.1,dec:59.1,name:"Caph"},{ra:10.1,dec:56.5,name:"Schedar"},{ra:23.9,dec:60.7,name:"Gamma Cas"},{ra:33.7,dec:60.2,name:"Ruchbah"},{ra:45.8,dec:63.6,name:"Segin"}], lines: [[0,1],[1,2],[2,3],[3,4]] },
+            { name: "Zwaan", color: "rgba(255, 255, 100, 0.5)", stars: [{ra:310.3,dec:45.2,name:"Deneb"},{ra:292.6,dec:27.9,name:"Albireo"},{ra:305.5,dec:40.2,name:"Sadr"},{ra:296.2,dec:45.1,name:"Fawaris"},{ra:313.2,dec:33.9,name:"Gienah"}], lines: [[0,2],[2,1],[3,2],[2,4]] },
+            { name: "Leeuw", color: "rgba(255, 51, 170, 0.5)", stars: [{ra:152.0,dec:11.9,name:"Regulus"},{ra:177.2,dec:14.5,name:"Denebola"},{ra:154.9,dec:19.8,name:"Algieba"},{ra:168.5,dec:20.5,name:"Zosma"}], lines: [[0,2],[2,3],[3,1],[1,0]] },
+            { name: "Grote Hond", color: "rgba(100, 255, 255, 0.5)", stars: [{ra:101.3,dec:-16.7,name:"Sirius"},{ra:104.7,dec:-28.9,name:"Adhara"},{ra:107.1,dec:-26.4,name:"Wezen"}], lines: [[0,2],[2,1]] },
+            { name: "Lier", color: "rgba(200, 150, 255, 0.5)", stars: [{ra:279.2,dec:38.8,name:"Vega"},{ra:284.6,dec:32.7,name:"Sulafat"},{ra:282.5,dec:33.4,name:"Sheliak"}], lines: [[0,2],[2,1],[1,0]] },
+            { name: "Hercules", color: "rgba(180, 255, 180, 0.5)", stars: [{ra:258.6,dec:14.4,name:"Rasalgethi"},{ra:247.5,dec:21.5,name:"Kornephoros"},{ra:250.2,dec:31.6,name:"Zeta Her"},{ra:255.0,dec:31.3,name:"Epsilon Her"},{ra:258.0,dec:36.8,name:"Pi Her"},{ra:251.3,dec:38.9,name:"Eta Her"}], lines: [[0,1],[1,2],[2,3],[3,0],[2,5],[3,4],[5,4]] }
         ];
 
-        // Genereer willekeurige sterren met echte sferische spreiding
-        const stars = [];
-        for(let i=0; i<600; i++) {
-            stars.push({ ra: Math.random() * 360, dec: (Math.asin(Math.random() * 2 - 1) * 180 / Math.PI), color: `rgba(255,255,255,${0.1 + Math.random() * 0.6})` });
-        }
-
+        // Planeten
         const planets = [
-            { name: "Venus", speed: 224, dist: 170, color: "#ffddaa", size: 4, ring: false },
-            { name: "Mars", speed: 687, dist: 350, color: "#ff5555", size: 3.5, ring: false },
-            { name: "Jupiter", speed: 4332, dist: 520, color: "#ffaa55", size: 7, ring: false },
-            { name: "Saturnus", speed: 10759, dist: 650, color: "#eedd88", size: 6, ring: true }
+            { name: "Mercurius", speed: 88, size: 2.5, color: "#aaaaaa" },
+            { name: "Venus", speed: 224, size: 4, color: "#ffddaa" },
+            { name: "Mars", speed: 687, size: 3.5, color: "#ff5555" },
+            { name: "Jupiter", speed: 4332, size: 6.5, color: "#ffaa55" },
+            { name: "Saturnus", speed: 10759, size: 5.5, color: "#eedd88", ring: true },
+            { name: "Uranus", speed: 30687, size: 4, color: "#88ddff" },
+            { name: "Neptunus", speed: 60190, size: 4, color: "#4444ff" }
         ];
 
-        // --- 2. WISKUNDIGE ENGINE ---
+        // Aardse Landmarks (Nieuw: Hildernisse, Westkerke, Scherpenisse)
+        const landmarks = [
+            { name: "PENTAGON (USA)", az: 291.4, color: "var(--us)" },
+            { name: "ROUEN KATHEDRAAL", az: 210.1, color: "var(--phi)" },
+            { name: "ANTWERPEN KATHEDRAAL", az: 203.4, color: "var(--phi)" },
+            { name: "WESTERKERK AMS", az: 287.5, color: "var(--magenta)" },
+            { name: "OUDE KERK AMS", az: 288.2, color: "var(--cyan)" },
+            { name: "KERK STAVENISSE", az: 233.1, color: "#aaddff" },
+            { name: "HILDERNISSE", az: 222.5, color: "#88ff88" },
+            { name: "TERP WESTKERKE", az: 231.1, color: "#ffaa88" },
+            { name: "SCHERPENISSE", az: 231.8, color: "#ff88aa" },
+            { name: "AARDJESBERG HILV", az: 264.8, color: "#ffcc00" },
+            { name: "VECTOR Pijl", az: 29.0, color: "var(--cyan)" },
+            { name: "MICHAEL KERK ZWOLLE", az: 62.4, color: "var(--landmark)" },
+            { name: "GROTE KERK THOLEN", az: 82.5, color: "var(--magenta)" }
+        ];
+
+        const stars = Array.from({length: 900}, () => ({ ra: Math.random() * 360, dec: (Math.asin(Math.random() * 2 - 1) * 180 / Math.PI), color: `rgba(255,255,255,${0.1 + Math.random() * 0.5})` }));
+
+        // --- 2. WISKUNDE ---
         function getAltAz(ra, dec, date, lat, lon) {
             const rad = Math.PI / 180;
-            const latRad = lat * rad;
-            const decRad = dec * rad;
-            
-            const daysSinceJ2000 = (date.getTime() / 86400000) - 10957.5;
-            let lst = 280.46061837 + 360.98564736629 * daysSinceJ2000 + lon;
-            lst = (lst % 360 + 360) % 360;
-
-            let ha = lst - ra;
-            ha = (ha % 360 + 360) % 360;
-            const haRad = ha * rad;
-
-            const sinAlt = Math.sin(decRad) * Math.sin(latRad) + Math.cos(decRad) * Math.cos(latRad) * Math.cos(haRad);
-            const altitude = Math.asin(sinAlt);
-
-            const cosAz = (Math.sin(decRad) - Math.sin(latRad) * sinAlt) / (Math.cos(latRad) * Math.cos(altitude));
-            let azimuth = Math.acos(cosAz);
-
-            if (Math.sin(haRad) > 0) azimuth = 2 * Math.PI - azimuth;
-
-            return { alt: altitude * (180/Math.PI), azi: azimuth * (180/Math.PI) };
+            const days = (date.getTime() / 86400000) - 10957.5;
+            let lst = (280.46061837 + 360.98564736629 * days + lon) % 360;
+            if(lst < 0) lst += 360;
+            let ha = (lst - ra) % 360;
+            if(ha < 0) ha += 360;
+            const sinAlt = Math.sin(dec*rad) * Math.sin(lat*rad) + Math.cos(dec*rad) * Math.cos(lat*rad) * Math.cos(ha*rad);
+            const alt = Math.asin(sinAlt);
+            const cosAz = (Math.sin(dec*rad) - Math.sin(lat*rad) * sinAlt) / (Math.cos(lat*rad) * Math.cos(alt));
+            let az = Math.acos(cosAz);
+            if (Math.sin(ha*rad) > 0) az = 2 * Math.PI - az;
+            return { alt: alt / rad, azi: az / rad };
         }
 
-        // Berekent huidige Zon RA/Dec
         function getSunRaDec(date) {
             const d = (date.getTime() / 86400000) - 10957.5;
             const L = (280.460 + 0.9856474 * d) % 360;
             const g = ((357.528 + 0.9856003 * d) % 360) * Math.PI/180;
             const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2*g)) * Math.PI/180;
             const epsilon = (23.439 - 0.0000004 * d) * Math.PI/180;
-            
             let ra = Math.atan2(Math.cos(epsilon) * Math.sin(lambda), Math.cos(lambda)) * 180/Math.PI;
             let dec = Math.asin(Math.sin(epsilon) * Math.sin(lambda)) * 180/Math.PI;
-            if (ra < 0) ra += 360;
-            return { ra, dec };
+            return { ra: (ra+360)%360, dec };
         }
 
-        // Vertaal Alt/Az naar 3D dome coördinaten
-        // Jouw setup: Z-as = Zuid(180°), X-as = Oost(90°)
+        function getMoonRaDec(date) {
+            const d = (date.getTime() / 86400000) - 10957.5;
+            const L = (218.316 + 13.176396 * d) % 360;
+            const M = ((134.963 + 13.064993 * d) % 360) * Math.PI/180;
+            const F = ((93.272 + 13.229350 * d) % 360) * Math.PI/180;
+            const lambda = (L + 6.289 * Math.sin(M)) * Math.PI/180;
+            const beta = (5.128 * Math.sin(F)) * Math.PI/180;
+            const epsilon = 23.439 * Math.PI/180;
+            let ra = Math.atan2(Math.sin(lambda)*Math.cos(epsilon) - Math.tan(beta)*Math.sin(epsilon), Math.cos(lambda)) * 180/Math.PI;
+            let dec = Math.asin(Math.sin(beta)*Math.cos(epsilon) + Math.cos(beta)*Math.sin(epsilon)*Math.sin(lambda)) * 180/Math.PI;
+            return { ra: (ra+360)%360, dec };
+        }
+
         function altAzToCartesian(alt, azi, radius) {
-            const altRad = alt * (Math.PI / 180);
-            const compassRad = (180 - azi) * (Math.PI / 180); 
-            return {
-                x: radius * Math.cos(altRad) * Math.sin(compassRad),
-                y: radius * Math.sin(altRad),
-                z: radius * Math.cos(altRad) * Math.cos(compassRad),
-                azi: azi
-            };
+            const r = Math.PI / 180;
+            return { x: radius * Math.cos(alt*r) * Math.sin((180-azi)*r), y: radius * Math.sin(alt*r), z: radius * Math.cos(alt*r) * Math.cos((180-azi)*r) };
         }
 
-        function projectOmni(x, y, z, w, pitch, yaw) {
+        function projectOmni(x, y, z, w = 0, pitch = 0.5, yaw = 0) {
             let x4 = x * Math.cos(Math.PI/4) - w * Math.sin(Math.PI/4);
             let w4 = x * Math.sin(Math.PI/4) + w * Math.cos(Math.PI/4);
-            
             let x1 = x4 * Math.cos(yaw) - z * Math.sin(yaw);
             let z1 = x4 * Math.sin(yaw) + z * Math.cos(yaw);
-            
             let y2 = y * Math.cos(pitch) - z1 * Math.sin(pitch);
             let z2 = y * Math.sin(pitch) + z1 * Math.cos(pitch);
-            
             let f = 1000 / (1000 + z2 + w4);
             return { x: -x1 * f, y: y2 * f, s: f, z: z2 };
         }
 
-        function formatTime(date) { return date.toLocaleTimeString('nl-NL', { hour12: false }); }
-
         // --- 3. ANIMATIE LOOP ---
         function animate() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
             const cx = canvas.width / 2, cy = canvas.height / 2;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            const now = new Date(); // Huidige Tijd in Laren
+            const now = new Date();
             const ms = now.getMilliseconds();
-            const timeStr = formatTime(now);
-            const totalSeconds = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds() + (ms / 1000);
+            const totalSecs = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds() + (ms / 1000);
             
-            document.getElementById('sys-time').innerText = timeStr;
+            document.getElementById('sys-time').innerText = now.toLocaleTimeString('nl-NL', { hour12: false });
             document.getElementById('sys-ms').innerText = "." + ms.toString().padStart(3, '0');
 
             const pitch = 0.5;
-            const cr = 350; // Radius van de horizon
+            const cr = 350;
 
-            // A. ACHTERGRONDSTERREN
+            // 1. ACHTERGRONDSTERREN
             stars.forEach(star => {
                 let pos = getAltAz(star.ra, star.dec, now, LAREN_LAT, LAREN_LON);
-                if (pos.alt > -5) { // Verberg diep onder de horizon
+                if (pos.alt > -5) {
                     let cart = altAzToCartesian(pos.alt, pos.azi, 1200);
-                    let p = projectOmni(cart.x, cart.y, cart.z, 0, pitch, 0); // Yaw is 0, aarde staat stil!
-                    if (p.z > -900 && p.s > 0) {
-                        ctx.fillStyle = star.color;
-                        ctx.beginPath(); ctx.arc(cx + p.x, cy + p.y, Math.max(0.1, p.s), 0, Math.PI*2); ctx.fill();
-                    }
-                }
-            });
-
-            // B. STERRENBEELDEN
-            constellations.forEach(constell => {
-                let projectedStars = [];
-                constell.stars.forEach(star => {
-                    let pos = getAltAz(star.ra, star.dec, now, LAREN_LAT, LAREN_LON);
-                    let cart = altAzToCartesian(pos.alt, pos.azi, 1100);
                     let p = projectOmni(cart.x, cart.y, cart.z, 0, pitch, 0);
-                    p.azi = pos.azi; p.alt = pos.alt;
-                    projectedStars.push(p);
-                    
-                    if (pos.alt > 0 && p.z > -900 && p.s > 0) {
-                        ctx.fillStyle = "#ffffff";
-                        ctx.beginPath(); ctx.arc(cx + p.x, cy + p.y, Math.max(0.1, 2 * p.s), 0, Math.PI*2); ctx.fill();
-                        ctx.fillStyle = constell.color; ctx.font = "10px Courier New";
-                        ctx.fillText(star.name, cx + p.x + 5, cy + p.y - 5);
-                    }
-                });
+                    if (p.z > -900 && p.s > 0) { ctx.fillStyle = star.color; ctx.beginPath(); ctx.arc(cx + p.x, cy + p.y, p.s, 0, Math.PI*2); ctx.fill(); }
+                }
+            });
 
+            // 2. STERRENBEELDEN (Incl. Maagd & Poolster)
+            constellations.forEach(constell => {
+                let pStars = constell.stars.map(s => {
+                    let pos = getAltAz(s.ra, s.dec, now, LAREN_LAT, LAREN_LON);
+                    let c = altAzToCartesian(pos.alt, pos.azi, 1100);
+                    let p = projectOmni(c.x, c.y, c.z, 0, pitch, 0);
+                    return {...p, alt: pos.alt, name: s.name};
+                });
                 ctx.strokeStyle = constell.color; ctx.lineWidth = 1;
-                constell.lines.forEach(line => {
-                    let p1 = projectedStars[line[0]];
-                    let p2 = projectedStars[line[1]];
-                    if (p1 && p2 && p1.alt > -10 && p2.alt > -10 && p1.z > -900 && p2.z > -900 && p1.s > 0 && p2.s > 0) {
-                        ctx.beginPath(); ctx.moveTo(cx + p1.x, cy + p1.y); ctx.lineTo(cx + p2.x, cy + p2.y); ctx.stroke();
-                    }
+                constell.lines.forEach(l => {
+                    let p1 = pStars[l[0]], p2 = pStars[l[1]];
+                    if (p1 && p2 && p1.alt > -5 && p2.alt > -5 && p1.s > 0 && p2.s > 0) { ctx.beginPath(); ctx.moveTo(cx+p1.x, cy+p1.y); ctx.lineTo(cx+p2.x, cy+p2.y); ctx.stroke(); }
+                });
+                pStars.forEach(p => { 
+                    if (p.alt > -5 && p.s > 0) { 
+                        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(cx+p.x, cy+p.y, 2*p.s, 0, Math.PI*2); ctx.fill(); 
+                        
+                        // Extra nadruk op Poolster en Deneb
+                        if(p.name === "POOLSTER" || p.name === "Deneb") {
+                            ctx.fillStyle = "#00ffcc"; ctx.font = "bold 12px Courier New";
+                        } else {
+                            ctx.fillStyle = constell.color; ctx.font = "10px Courier New"; 
+                        }
+                        ctx.fillText(p.name, cx+p.x+5, cy+p.y-5); 
+                    } 
                 });
                 
-                if (projectedStars[0] && projectedStars[0].alt > 0 && projectedStars[0].z > -900 && projectedStars[0].s > 0) {
-                    let p = projectedStars[0];
-                    ctx.fillStyle = constell.color.replace('0.5', '1.0'); ctx.font = "bold 13px Courier New";
-                    ctx.fillText(constell.name.toUpperCase(), cx + p.x, cy + p.y - 28);
-                    ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = "9px Courier New";
-                    ctx.fillText(`Az:${p.azi.toFixed(1)}° | T:${timeStr}`, cx + p.x, cy + p.y - 18);
-                }
+                if (pStars[0] && pStars[0].alt > -5 && pStars[0].s > 0) { ctx.fillStyle = constell.color.replace('0.5', '1.0'); ctx.font = "bold 13px Courier New"; ctx.fillText(constell.name.toUpperCase(), cx + pStars[0].x, cy + pStars[0].y - 20); }
             });
 
-            // C. ZON (Live Data)
-            let sunData = getSunRaDec(now);
-            let sunPos = getAltAz(sunData.ra, sunData.dec, now, LAREN_LAT, LAREN_LON);
-            let sunCart = altAzToCartesian(sunPos.alt, sunPos.azi, 700);
-            let sunP = projectOmni(sunCart.x, sunCart.y, sunCart.z, 0, pitch, 0);
-            
-            if(sunPos.alt > -5 && sunP.z > -900 && sunP.s > 0) {
-                ctx.fillStyle = "#ffcc00";
-                ctx.beginPath(); ctx.arc(cx + sunP.x, cy + sunP.y, Math.max(0.1, 25 * sunP.s), 0, Math.PI*2); ctx.fill();
-                ctx.shadowBlur = 30; ctx.shadowColor = "#ffcc00"; ctx.fill(); ctx.shadowBlur = 0; 
-                ctx.fillStyle = "#fff"; ctx.font = "bold 14px Courier New"; ctx.fillText("HELIOS (ZON)", cx + sunP.x + 30, cy + sunP.y);
-                ctx.fillStyle = "rgba(255,204,0,0.8)"; ctx.font = "10px Courier New"; 
-                ctx.fillText(`Az:${sunPos.azi.toFixed(1)}° Alt:${sunPos.alt.toFixed(1)}°`, cx + sunP.x + 30, cy + sunP.y + 12);
+            // 3. ZON (HELIOS) & MAAN (LUNA)
+            let sunD = getSunRaDec(now);
+            let sunP = getAltAz(sunD.ra, sunD.dec, now, LAREN_LAT, LAREN_LON);
+            if(sunP.alt > -10) {
+                let c = altAzToCartesian(sunP.alt, sunP.azi, 700);
+                let p = projectOmni(c.x, c.y, c.z, 0, pitch, 0);
+                if(p.s > 0) { ctx.fillStyle = "var(--sun)"; ctx.shadowBlur = 40; ctx.shadowColor = "var(--sun)"; ctx.beginPath(); ctx.arc(cx+p.x, cy+p.y, 25*p.s, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle = "#fff"; ctx.font = "bold 14px Courier New"; ctx.fillText(`HELIOS [Az: ${sunP.azi.toFixed(1)}° | Alt: ${sunP.alt.toFixed(1)}°]`, cx+p.x+30, cy+p.y); }
             }
 
-            // D. PLANETEN (Langs ecliptica geplot)
-            planets.forEach((pl, idx) => {
-                let pOffset = (totalSeconds / pl.speed) * 10;
-                let plRa = (sunData.ra + pOffset + (idx * 40)) % 360; 
-                let plDec = sunData.dec + (Math.sin(idx)*5); // Benadering Ecliptica
-                
-                let plPos = getAltAz(plRa, plDec, now, LAREN_LAT, LAREN_LON);
-                let plCart = altAzToCartesian(plPos.alt, plPos.azi, 600);
-                let p = projectOmni(plCart.x, plCart.y, plCart.z, 0, pitch, 0);
-                
-                if(plPos.alt > 0 && p.z > -900 && p.s > 0) {
-                    ctx.globalAlpha = Math.min(1, (p.z + 900) / 400);
-                    if (pl.ring) {
-                        ctx.strokeStyle = "rgba(238, 221, 136, 0.5)"; ctx.lineWidth = Math.max(0.1, 2 * p.s);
-                        ctx.beginPath(); ctx.ellipse(cx + p.x, cy + p.y, Math.max(0.1, (pl.size + 6) * p.s), Math.max(0.1, (pl.size + 2) * p.s), 0, 0, Math.PI*2); ctx.stroke();
+            let moonD = getMoonRaDec(now);
+            let moonP = getAltAz(moonD.ra, moonD.dec, now, LAREN_LAT, LAREN_LON);
+            if(moonP.alt > -10) {
+                let c = altAzToCartesian(moonP.alt, moonP.azi, 650);
+                let p = projectOmni(c.x, c.y, c.z, 0, pitch, 0);
+                if(p.s > 0) { 
+                    ctx.fillStyle = "var(--moon)"; ctx.shadowBlur = 30; ctx.shadowColor = "rgba(255,255,255,0.8)"; 
+                    ctx.beginPath(); ctx.arc(cx+p.x, cy+p.y, 14*p.s, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; 
+                    ctx.fillStyle = "#fff"; ctx.font = "bold 13px Courier New"; 
+                    ctx.fillText(`LUNA [Az: ${moonP.azi.toFixed(1)}° | Alt: ${moonP.alt.toFixed(1)}°]`, cx+p.x+20, cy+p.y); 
+                }
+            }
+
+            // 4. PLANETEN 
+            planets.forEach((pl, i) => {
+                let ra = (sunD.ra + (totalSecs / pl.speed)*10 + (i*45)) % 360; 
+                let pos = getAltAz(ra, sunD.dec + Math.sin(i)*5, now, LAREN_LAT, LAREN_LON);
+                if(pos.alt > -5) {
+                    let c = altAzToCartesian(pos.alt, pos.azi, 600);
+                    let p = projectOmni(c.x, c.y, c.z, 0, pitch, 0);
+                    if(p.s > 0) {
+                        if (pl.ring) { ctx.strokeStyle = "rgba(238, 221, 136, 0.5)"; ctx.lineWidth = Math.max(0.1, 2 * p.s); ctx.beginPath(); ctx.ellipse(cx + p.x, cy + p.y, (pl.size + 6) * p.s, (pl.size + 2) * p.s, 0, 0, Math.PI*2); ctx.stroke(); }
+                        ctx.fillStyle = pl.color; ctx.beginPath(); ctx.arc(cx+p.x, cy+p.y, pl.size*p.s, 0, Math.PI*2); ctx.fill();
+                        ctx.fillStyle = "#fff"; ctx.font = "bold 10px Courier New"; ctx.fillText(`${pl.name} [${pos.azi.toFixed(1)}°]`, cx+p.x+12, cy+p.y);
                     }
-                    ctx.fillStyle = pl.color; ctx.beginPath(); ctx.arc(cx + p.x, cy + p.y, Math.max(0.1, pl.size * p.s), 0, Math.PI*2); ctx.fill();
-                    ctx.fillStyle = "#fff"; ctx.font = "bold 11px Courier New"; ctx.fillText(pl.name, cx + p.x + 12, cy + p.y + 4);
-                    ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "9px Courier New"; ctx.fillText(`Az:${plPos.azi.toFixed(1)}°`, cx + p.x + 12, cy + p.y + 14);
-                    ctx.globalAlpha = 1.0;
                 }
             });
 
-            // E. 3D KOMPAS (Grond Grid)
-            ctx.strokeStyle = "rgba(0, 255, 204, 0.15)"; ctx.lineWidth = 1;
-            ctx.beginPath();
-            for(let a=0; a<=360; a+=5) {
-                let cart = altAzToCartesian(0, a, cr); // Alt 0 = Horizon
-                let p = projectOmni(cart.x, 0, cart.z, 0, pitch, 0); 
-                if(p.s > 0) { if(a===0) ctx.moveTo(cx + p.x, cy + p.y); else ctx.lineTo(cx + p.x, cy + p.y); }
-            }
-            ctx.closePath(); ctx.stroke();
+            // 5. GROND-GRID & LANDMARKS
+            ctx.strokeStyle = "rgba(0, 255, 204, 0.15)"; ctx.lineWidth = 1; ctx.beginPath();
+            for(let a=0; a<=360; a+=10) { let c = altAzToCartesian(0, a, cr); let p = projectOmni(c.x, 0, c.z, 0, pitch, 0); if(p.s > 0) { if(a===0) ctx.moveTo(cx+p.x, cy+p.y); else ctx.lineTo(cx+p.x, cy+p.y); } }
+            ctx.stroke();
 
             let cPoint = projectOmni(0, 0, 0, 0, pitch, 0);
-
-            // F. VECTOREN: 29°, KERK (82.5°), PHI (161.8°)
-            function drawGroundVector(azimuthDegrees, label, color) {
-                let cart = altAzToCartesian(0, azimuthDegrees, cr);
+            landmarks.forEach((lm, idx) => {
+                let cart = altAzToCartesian(0, lm.az, cr);
                 let pVec = projectOmni(cart.x, 0, cart.z, 0, pitch, 0);
-                
                 if (pVec.s > 0 && cPoint.s > 0) {
-                    ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.shadowBlur = 10; ctx.shadowColor = color;
-                    ctx.beginPath(); ctx.moveTo(cx + cPoint.x, cy + cPoint.y); ctx.lineTo(cx + pVec.x, cy + pVec.y); ctx.stroke();
-                    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(cx + pVec.x, cy + pVec.y, 6 * pVec.s, 0, Math.PI*2); ctx.fill();
-                    
-                    ctx.fillStyle = "#ffffff"; ctx.font = "bold 14px Courier New"; ctx.textAlign = "center";
-                    ctx.fillText(label, cx + pVec.x, cy + pVec.y - 22);
-                    ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = "10px Courier New";
-                    ctx.fillText(`Az:${azimuthDegrees.toFixed(1)}° | T:${timeStr}`, cx + pVec.x, cy + pVec.y - 10);
-                    ctx.shadowBlur = 0; ctx.textAlign = "left"; 
-                }
-            }
-
-            drawGroundVector(29, "VECTOR (29°)", "var(--cyan)");
-            drawGroundVector(82.5, "GROTE KERK/THOLEN", "var(--magenta)");
-            drawGroundVector(161.8, "100-PHI", "var(--phi)");
-
-            // Kompas Labels N/O/Z/W
-            const compassPoints = [
-                {az: 180, l: "ZUID (TOP)"}, {az: 90, l: "OOST (LINKS)"}, 
-                {az: 0, l: "NOORD (BOTTOM)"}, {az: 270, l: "WEST (RECHTS)"}
-            ];
-            
-            ctx.textAlign = "center";
-            compassPoints.forEach(pt => {
-                let cart = altAzToCartesian(0, pt.az, cr);
-                let p = projectOmni(cart.x, 0, cart.z, 0, pitch, 0);
-                if (p.s > 0 && cPoint.s > 0) {
-                    ctx.strokeStyle = "rgba(0, 255, 204, 0.1)";
-                    ctx.beginPath(); ctx.moveTo(cx + cPoint.x, cy + cPoint.y); ctx.lineTo(cx + p.x, cy + p.y); ctx.stroke();
-                    ctx.fillStyle = "#fff"; ctx.font = "bold 14px Courier New";
-                    ctx.globalAlpha = Math.min(1, Math.max(0.3, (p.z + 500) / 500));
-                    ctx.fillText(pt.l, cx + p.x, cy + p.y - 15);
+                    ctx.strokeStyle = lm.color; ctx.lineWidth = 2; ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.moveTo(cx + cPoint.x, cy + cPoint.y); ctx.lineTo(cx + pVec.x, cy + pVec.y); ctx.stroke(); ctx.globalAlpha = 1.0; ctx.fillStyle = lm.color; ctx.beginPath(); ctx.arc(cx+pVec.x, cy+pVec.y, 4*pVec.s, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#ffffff"; ctx.font = "bold 11px Courier New"; ctx.textAlign = "center"; 
+                    // Y-Offset % 6 spreidt de teksten meer uit zodat ze niet overlappen
+                    let labelY = cy + pVec.y - 15 - (idx % 6 * 12); 
+                    ctx.fillText(`${lm.name} [${lm.az.toFixed(1)}°]`, cx + pVec.x, labelY);
                 }
             });
-            ctx.globalAlpha = 1.0; ctx.textAlign = "left";
 
-            // G. TESSERACT CORE (Onveranderd, visueel effect)
-            const tSize = 60; 
-            const tNodes = [];
-            const pulse = 1 + Math.sin((ms / 1000) * Math.PI * 2) * 0.1; 
-            
+            // 6. KOMPAS LABELS
+            [{az: 180, l: "ZUID (TOP)"}, {az: 90, l: "OOST (LINKS)"}, {az: 0, l: "NOORD (BOTTOM)"}, {az: 270, l: "WEST (RECHTS)"}].forEach(pt => {
+                let c = altAzToCartesian(0, pt.az, cr); let p = projectOmni(c.x, 0, c.z, 0, pitch, 0);
+                if (p.s > 0) { ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "bold 14px Courier New"; ctx.textAlign="center"; ctx.fillText(pt.l, cx+p.x, cy+p.y - 40); }
+            });
+
+            // 7. TESSERACT CORE
+            const tSize = 60; const tNodes = []; const pulse = 1 + Math.sin(ms/200)*0.05;
             for (let i = 0; i < 16; i++) {
-                let x = (i & 1 ? 1 : -1) * (tSize * pulse);
-                let y = (i & 2 ? 1 : -1) * (tSize * pulse);
-                let z = (i & 4 ? 1 : -1) * (tSize * pulse);
-                let w = (i & 8 ? 1 : -1) * (tSize * pulse);
-                tNodes.push(projectOmni(x, y, z, w, pitch, totalSeconds * 0.4));
+                let x = (i & 1 ? 1 : -1) * (tSize * pulse); let y = (i & 2 ? 1 : -1) * (tSize * pulse); let z = (i & 4 ? 1 : -1) * (tSize * pulse); let w = (i & 8 ? 1 : -1) * (tSize * pulse);
+                tNodes.push(projectOmni(x, y, z, w, pitch, totalSecs * 0.4));
             }
-            
-            ctx.lineWidth = 1.5; ctx.strokeStyle = `rgba(0, 255, 204, ${Math.max(0.1, 0.2 + (pulse-1)*2)})`;
-            tNodes.forEach((n1, i) => {
-                tNodes.forEach((n2, j) => {
-                    if ((i ^ j) === 1 || (i ^ j) === 2 || (i ^ j) === 4 || (i ^ j) === 8) {
-                        if (n1.s > 0 && n2.s > 0 && n1.z > -900 && n2.z > -900) {
-                            ctx.beginPath(); ctx.moveTo(cx + n1.x, cy + n1.y); ctx.lineTo(cx + n2.x, cy + n2.y); ctx.stroke();
-                        }
-                    }
-                });
-            });
+            ctx.lineWidth = 1; ctx.strokeStyle = "rgba(0, 255, 204, 0.4)";
+            tNodes.forEach((n1, i) => { tNodes.forEach((n2, j) => { if ((i ^ j) === 1 || (i ^ j) === 2 || (i ^ j) === 4 || (i ^ j) === 8) { if (n1.s > 0 && n2.s > 0) { ctx.beginPath(); ctx.moveTo(cx+n1.x, cy+n1.y); ctx.lineTo(cx+n2.x, cy+n2.y); ctx.stroke(); } } }); });
 
             requestAnimationFrame(animate);
         }
-        
         animate();
     </script>
 </body>
