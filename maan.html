@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VORTEX OMNI-BRIDGE // TESSERACT SELECTIE</title>
+    <style>
+        :root {
+            --neon-green: #00ff41;
+            --neon-blue: #00d2ff;
+            --dark-bg: #0a0a0a;
+            --panel-bg: #141414;
+            --border-color: #333;
+            --text-muted: #888;
+        }
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: var(--dark-bg);
+            color: var(--neon-green);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        header {
+            padding: 15px;
+            border-bottom: 2px solid var(--neon-green);
+            background: var(--panel-bg);
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .viewport {
+            flex: 1;
+            padding: 20px;            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+        #view-left {
+            border-right: 2px solid var(--neon-green);
+            flex: 1.5;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(18, 1fr);
+            gap: 2px;
+            background-color: var(--border-color);
+            padding: 4px;
+            border-radius: 2px;
+            width: fit-content;
+        }
+        .cell {
+            width: 32px;
+            height: 32px;
+            background-color: #000;
+            border: 1px solid #111;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s;
+            cursor: crosshair;
+            user-select: none;
+        }
+        .cell:hover {
+            background-color: #003300;
+        }
+        .cell.tesseract-center {
+            background-color: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-blue);
+            font-weight: bold;
+            z-index: 2;
+        }
+        .cell.tesseract-node {
+            background-color: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 8px var(--neon-green);
+        }
+        .console {
+            background: #000;
+            border: 1px dashed var(--neon-blue);
+            padding: 15px;
+            font-size: 13px;
+            line-height: 1.5;
+            flex-grow: 1;
+            margin-bottom: 20px;
+            overflow-y: auto;
+            color: var(--neon-blue);
+        }
+        h2 {
+            font-size: 18px;
+            margin-top: 0;
+            border-left: 4px solid var(--neon-green);
+            padding-left: 10px;
+            text-transform: uppercase;
+        }
+        .tesseract-title {
+            border-left-color: var(--neon-blue);
+            color: var(--neon-blue);
+        }
+        #selected-points-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 5px;
+        }
+        #selected-points-list li {
+            background: rgba(0, 210, 255, 0.1);
+            border: 1px solid rgba(0, 210, 255, 0.3);
+            padding: 5px;
+            font-size: 12px;
+        }
+        .btn-clear {
+            background-color: var(--neon-blue);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-family: monospace;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn-clear:hover {
+            background-color: #fff;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div style="font-size: 20px; font-weight: bold;">VORTEX OMNI-BRIDGE // SYS NOTEBOOK</div>
+    <div style="font-size: 14px; color: var(--neon-blue);">[ MOD 11 ] TESSERACT GEO-SELECTIE ACTIEF</div>
+</header>
+<div class="main-container">
+    <div id="view-left" class="viewport">
+        <h2>MAGNETISCH VELD (18 Kols x 13 Rijen)</h2>
+        <p style="font-size: 12px; color: var(--text-muted);">Klik op een cel om een multidimensionale Tesseract-scan uit te voeren met Vortex-hoek 29.</p>
+        <div id="magnetic-grid" class="grid-container"></div>
+    </div>
+    <div id="view-right" class="viewport">
+        <h2 class="tesseract-title">TESSERACT DATA EXTRACTIE</h2>
+        <div class="console">
+            <p>> Wachten op Tesseract ankerpunt...</p>
+            <ul id="selected-points-list"></ul>
+        </div>
+        <div style="border: 1px dashed var(--neon-blue); padding: 15px; background: rgba(0, 210, 255, 0.05);">
+            <h3 style="color: var(--neon-blue); margin-top: 0;">SELECTIE INFORMATIE</h3>
+            <p style="font-size: 12px; color: #ccc;">
+                De Tesseract selecteert het kernpunt en de 4 dimensionale spiegelpunten (nodes) gebaseerd op de vortex-stap van 29.
+            </p>
+            <button class="btn-clear" onclick="clearSelection()">RESET TESSERACT SELECTIE</button>
+        </div>
+    </div>
+</div>
+<script>
+    const columns = 18;
+    const rows = 13;
+    const totalCells = columns * rows; // 234
+    const vortexStap = 29; // Onze anomalie-hoek
+    const grid = document.getElementById('magnetic-grid');
+    const cells = [];
+
+    function initGrid() {
+        for (let i = 0; i < totalCells; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            const val = i + 1; // Nummer 1 tot 234
+            cell.innerText = val;
+            
+            const col = (i % columns) + 1;
+            const row = Math.floor(i / columns) + 1;
+            
+            cell.dataset.index = i;
+            cell.dataset.val = val;
+            cell.title = `Index: ${val} | Kolom: ${col} | Rij: ${row}`;
+            
+            cell.addEventListener('click', () => applyTesseract(i));
+            grid.appendChild(cell);
+            cells.push(cell);
+        }
+    }
+
+    function applyTesseract(centerIndex) {
+        clearSelection();
+        const selectedNodes = [];
+
+        function selectCell(idx, type) {
+            if (idx >= 0 && idx < totalCells) {
+                cells[idx].classList.add(type);
+                selectedNodes.push(cells[idx]);
+            }
+        }
+
+        // A. Het Kernpunt (Center)
+        selectCell(centerIndex, 'tesseract-center');
+
+        // B. De Dimensionale Nodes (Stappen van 29)
+        const nodes = [
+            centerIndex - (vortexStap * 2), // -58
+            centerIndex - vortexStap,       // -29
+            centerIndex + vortexStap,       // +29
+            centerIndex + (vortexStap * 2)  // +58
+        ];
+
+        nodes.forEach(nodeIdx => {
+            selectCell(nodeIdx, 'tesseract-node');
+        });
+
+        updateConsole(selectedNodes);
+    }
+
+    function clearSelection() {
+        cells.forEach(cell => {
+            cell.classList.remove('tesseract-center', 'tesseract-node');
+        });
+        document.getElementById('selected-points-list').innerHTML = '';
+    }
+
+    function updateConsole(nodes) {
+        const list = document.getElementById('selected-points-list');
+        list.innerHTML = '';
+        if (nodes.length === 0) return;
+        nodes.forEach(node => {
+            const li = document.createElement('li');
+            const type = node.classList.contains('tesseract-center') ? 'KERN (As)' : 'NODE (Vortex Stap)';
+            li.innerHTML = `<strong>${type}</strong> -> Waarde: <strong>${node.dataset.val}</strong>`;
+            list.appendChild(li);
+        });
+    }
+
+    initGrid();
+</script>
+</body>
+</html>
