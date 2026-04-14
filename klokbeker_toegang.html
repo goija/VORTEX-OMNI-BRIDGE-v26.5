@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VORTEX // MOBILE SCANNER</title>
+    <style>
+        /* --- GLOBALE STYLING --- */
+        :root {
+            --vortex-cyan: #00e5ff;
+            --vortex-magenta: #ff00ff;
+            --vortex-bg: #050505;
+            --vortex-alert: #ff003c;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--vortex-bg);
+            color: var(--vortex-cyan);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- HEADER --- */
+        header {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+            text-align: center;
+            background: linear-gradient(180deg, rgba(0,229,255,0.1) 0%, transparent 100%);
+        }
+
+        .header-title {
+            font-size: 1.2rem;
+            letter-spacing: 3px;
+            font-weight: bold;
+        }
+        
+        .header-sub {
+            font-size: 0.7rem;
+            color: var(--vortex-magenta);
+        }
+
+        /* --- RADAR / TRACKER INTERFACE --- */
+        #radar-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #radar-circle {
+            width: 250px;
+            height: 250px;
+            border: 2px dashed rgba(0, 229, 255, 0.3);
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        #radar-circle::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background: rgba(0, 229, 255, 0.2);
+        }
+
+        #radar-circle::after {
+            content: '';
+            position: absolute;
+            width: 1px;
+            height: 100%;
+            background: rgba(0, 229, 255, 0.2);
+        }
+
+        /* Het compaskruis dat meedraait met de telefoon */
+        #compass-heading {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 229, 255, 0.8);
+            border-top: 4px solid var(--vortex-cyan); /* Noord-indicator */
+            transform-origin: center;
+            transition: transform 0.1s linear;
+        }
+
+        /* Het doelwit (Venus) op de radar */
+        #target-venus {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: var(--vortex-magenta);
+            border-radius: 50%;
+            box-shadow: 0 0 15px var(--vortex-magenta);
+            transform-origin: 125px 125px; /* Draait rond het centrum van de 250px radar */
+            transition: transform 0.5s linear;
+        }
+
+        .center-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--vortex-cyan);
+            border-radius: 50%;
+            z-index: 10;
+        }
+
+        /* --- TELEMETRIE DATA --- */
+        #telemetry-panel {
+            padding: 1.5rem;
+            border-top: 1px solid rgba(0, 229, 255, 0.3);
+            font-size: 0.85rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .data-label {
+            color: #666;
+            font-size: 0.7rem;
+        }
+
+        .data-value {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .data-value.magenta { color: var(--vortex-magenta); }
+        .data-value.alert { color: var(--vortex-alert); }
+
+        /* --- INITIATIE SCHERM (Voor iOS Permissies) --- */
+        #start-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--vortex-bg);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        button {
+            background: transparent;
+            border: 1px solid var(--vortex-cyan);
+            color: var(--vortex-cyan);
+            padding: 15px 30px;
+            font-family: inherit;
+            font-size: 1.2rem;
+            margin-top: 2rem;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        button:active {
+            background: var(--vortex-cyan);
+            color: #000;
+        }
+
+        /* VISUELE LOCK STATE */
+        body.lock-active {
+            box-shadow: inset 0 0 50px rgba(255, 0, 255, 0.3);
+        }
+        body.lock-active #radar-circle {
+            border-color: var(--vortex-magenta);
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="start-overlay">
+        <div class="header-title">VORTEX FIELD SCANNER</div>
+        <div class="header-sub">M2M TELEMETRY LINK</div>
+        <p style="font-size: 0.8rem; color: #888; margin-top: 20px;">
+            Riching en gyroscoop sensoren vereist voor ruimtelijke tracking.
+        </p>
+        <button id="btn-init">INITIATE SENSORS</button>
+    </div>
+
+    <header>
+        <div class="header-title">LIVE TRACKER</div>
+        <div class="header-sub">TARGET: HELIOS-2 (VENUS)</div>
+    </header>
+
+    <div id="radar-container">
+        <div id="radar-circle">
+            <div id="compass-heading"></div>
+            <div id="target-venus"></div>
+            <div class="center-dot"></div>
+        </div>
+    </div>
+
+    <div id="telemetry-panel">
+        <div>
+            <div class="data-label">DEVICE HEADING</div>
+            <div class="data-value" id="val-heading">0.0°</div>
+        </div>
+        <div>
+            <div class="data-label">VENUS AZIMUTH</div>
+            <div class="data-value magenta" id="val-target">AWAITING...</div>
+        </div>
+        <div>
+            <div class="data-label">DISTANCE (AU)</div>
+            <div class="data-value" id="val-dist">0.723</div>
+        </div>
+        <div>
+            <div class="data-label">LOCK STATUS</div>
+            <div class="data-value alert" id="val-lock">SEARCHING</div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONSTANTEN & STATUS ---
+        // We simuleren Venus rond de 218 graden (gebaseerd op je eerdere screenshots)
+        let venusBaseAzimuth = 217.7; 
+        let currentHeading = 0;
+        let isLocked = false;
+
+        // DOM Elementen
+        const startOverlay = document.getElementById('start-overlay');
+        const btnInit = document.getElementById('btn-init');
+        const compassEl = document.getElementById('compass-heading');
+        const targetEl = document.getElementById('target-venus');
+        
+        const valHeading = document.getElementById('val-heading');
+        const valTarget = document.getElementById('val-target');
+        const valDist = document.getElementById('val-dist');
+        const valLock = document.getElementById('val-lock');
+
+        // --- INITIATIE & PERMISSIES ---
+        btnInit.addEventListener('click', async () => {
+            // Check voor iOS 13+ device orientation permissions
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    const permissionState = await DeviceOrientationEvent.requestPermission();
+                    if (permissionState === 'granted') {
+                        startTracking();
+                    } else {
+                        alert("Sensor toegang geweigerd.");
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            } else {
+                // Non-iOS 13+ devices (Android etc.)
+                startTracking();
+            }
+        });
+
+        function startTracking() {
+            startOverlay.style.display = 'none';
+            
+            // Start de astronomische simulatie
+            setInterval(updateVenusPosition, 1000);
+            
+            // Luister naar het fysieke kompas van de telefoon
+            window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+            
+            // Fallback voor apparaten die absolute orientation niet goed doorgeven
+            window.addEventListener('deviceorientation', (e) => {
+                if(e.absolute !== true && e.webkitCompassHeading) {
+                    updateRadar(e.webkitCompassHeading); // Specifiek voor iOS kompas
+                } else if (e.absolute === true || e.alpha !== null) {
+                    // Standaard alpha waarde (0-360)
+                    let heading = 360 - e.alpha; 
+                    updateRadar(heading);
+                }
+            }, true);
+        }
+
+        // --- LOGICA ---
+
+        // 1. Simuleer een licht verschuivende baan voor Venus (om het "live" te laten voelen)
+        function updateVenusPosition() {
+            // Kleine variatie om de baan te simuleren
+            let timeDrift = Math.sin(Date.now() / 10000) * 0.5;
+            let currentVenusAzimuth = venusBaseAzimuth + timeDrift;
+            
+            valTarget.innerText = currentVenusAzimuth.toFixed(1) + '°';
+            
+            // Plaats Venus stip op de radar rand (radius = 125px, stip roteert)
+            // De transform roteert de stip rond het centrum van de cirkel
+            targetEl.style.transform = `rotate(${currentVenusAzimuth}deg) translateY(-125px)`;
+        }
+
+        // 2. Verwerk de fysieke rotatie van de telefoon
+        function updateRadar(heading) {
+            if (!heading) return;
+            currentHeading = heading;
+            valHeading.innerText = currentHeading.toFixed(1) + '°';
+
+            // Draai de interface tegen de richting in, zodat Noord altijd klopt met je telefoon
+            compassEl.style.transform = `rotate(${-currentHeading}deg)`;
+
+            // Check of we in de "Lock" zone zitten (tolerance van 5 graden)
+            let delta = Math.abs(currentHeading - venusBaseAzimuth);
+            // Corrigeer voor de 360/0 graden overgang
+            if (delta > 180) delta = 360 - delta;
+
+            if (delta <= 5.0) {
+                if (!isLocked) engageLock();
+            } else {
+                if (isLocked) disengageLock();
+            }
+        }
+
+        // 3. UI States
+        function engageLock() {
+            isLocked = true;
+            document.body.classList.add('lock-active');
+            valLock.innerText = "VECTOR LOCKED";
+            valLock.style.color = "var(--vortex-cyan)";
+            valDist.innerText = (0.723 + (Math.random() * 0.001)).toFixed(4) + " AU"; // Live jitter
+        }
+
+        function disengageLock() {
+            isLocked = false;
+            document.body.classList.remove('lock-active');
+            valLock.innerText = "SEARCHING";
+            valLock.style.color = "var(--vortex-alert)";
+        }
+    </script>
+</body>
+</html>
