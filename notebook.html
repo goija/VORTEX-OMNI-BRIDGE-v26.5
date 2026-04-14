@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VORTEX // ARCHEO-MATRIX v199.0</title>
+    <title>VORTEX // ARCHEO-MATRIX v205.0</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
@@ -11,16 +11,17 @@
             --main: #00ffcc; --ai-glow: #00a2ff; --neural: #ff00ff; --bridge: #ffcc00;
             --tesseract: #00ff66; --klokbeker: #ff3366; --tactical: #ff0000;
             --kadaster: #d4af37; --sat: #4caf50; --windroos: #ff9900; --rws: #0077ff; --knmi: #ff6600;
-            --drill: #ff4500;
+            --drill: #ff4500; --app: #00e5ff;
             --font-mono: 'Fira Code', 'Courier New', monospace;
         }
         body, html { margin:0; padding:0; height:100vh; background:var(--bg); color:#e0e0e0; font-family:sans-serif; overflow:hidden; }
 
         /* --- LAYOUT GRID --- */
         .vortex-container { display: flex; height: 100vh; gap: 2px; background: var(--border); flex-direction: row; }
-        .pane { background: var(--bg); display: flex; flex-direction: column; overflow: hidden; flex: 1; transition: flex 0.4s ease; }
+        .pane { background: var(--bg); display: flex; flex-direction: column; overflow: hidden; flex: 1; transition: flex 0.4s ease, width 0.4s ease; }
         .pane.tree-pane { flex: 0.9; }
         .pane.expanded { flex: 3.5; }
+        .pane.hidden { display: none !important; }
 
         .header { 
             height: 40px; background: var(--panel); border-bottom: 1px solid var(--border); 
@@ -28,6 +29,10 @@
             font-family: var(--font-mono); font-weight: bold; justify-content: space-between;
             color: var(--ai-glow); text-transform: uppercase; flex-shrink: 0;
         }
+
+        .vp-controls { display: flex; gap: 8px; }
+        .vp-btn { background: #000; border: 1px solid var(--ai-glow); color: var(--ai-glow); cursor: pointer; font-size: 0.6rem; padding: 4px 8px; font-family: var(--font-mono); transition: 0.2s; border-radius: 2px;}
+        .vp-btn:hover { background: var(--ai-glow); color: #000; }
 
         /* --- RESPONSIVE MOBILE FIX --- */
         @media (max-width: 900px) {
@@ -69,7 +74,8 @@
         .tree-file.rws-link:hover { color: var(--rws); }
         .tree-file.knmi-link:hover { color: var(--knmi); }
         .tree-file.db-link:hover { color: #fff; }
-        
+        .tree-file.app-link { color: var(--app); }
+        .tree-file.app-link:hover { color: #fff; text-shadow: 0 0 5px var(--app); }
         .tree-file.data-toggle { color: #888; }
         .tree-file.data-toggle.active { color: var(--drill); font-weight: bold; }
         .tree-file.data-toggle:hover { color: var(--drill); }
@@ -78,12 +84,14 @@
         .viewport-engine { flex: 1; position: relative; background: #000; display: flex; flex-direction: row; transition: background 0.8s; }
         .viewport-engine.white-lock { background: #ffffff; } 
         
-        #map-layer, #tesseract-layer, #document-layer, #windrose-layer, #records-layer { 
+        #map-layer, #tesseract-layer, #document-layer, #windrose-layer, #records-layer, #iframe-layer { 
             position: absolute; top:0; left:0; width: 100%; height: 100%; z-index: 5; 
             display: none; background: transparent; transition: width 0.3s ease; border: none;
         }
+
+        #iframe-layer { background: var(--bg); z-index: 15; }
+        #iframe-layer iframe { width: 100%; height: 100%; border: none; }
         
-        /* Modus Filters */
         .kadaster-mode #map-layer { filter: sepia(0.8) contrast(1.2) brightness(0.9) saturate(1.5); }
         .tactical-mode #map-layer { filter: contrast(1.3) saturate(0.5) hue-rotate(300deg); }
         .archeo-mode #map-layer { filter: sepia(0.4) hue-rotate(270deg) saturate(1.5) contrast(1.2); }
@@ -112,21 +120,22 @@
         .viewport-engine.hologram #tesseract-layer { display: flex; z-index: 10; width: 100%; pointer-events: none; }
         .viewport-engine.hologram #override-tracker { display: block; z-index: 20; width: 100%; left: 0; }
 
-        /* --- LIVE WINDROSE LAYER STYLES --- */
+        /* --- WINDROSE LAYER STYLES --- */
         #windrose-layer { display: none; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); color: var(--main); z-index: 15; font-family: var(--font-mono); }
         .compass-hologram { position: relative; width: 350px; height: 350px; border: 2px dashed var(--rws); border-radius: 50%; box-shadow: 0 0 40px rgba(0, 119, 255, 0.1), inset 0 0 40px rgba(0, 119, 255, 0.2); margin-bottom: 40px; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, rgba(0,119,255,0.05) 0%, rgba(0,0,0,0) 70%); }
         .compass-center { position: absolute; width: 12px; height: 12px; background: var(--windroos); border-radius: 50%; box-shadow: 0 0 15px var(--windroos); z-index: 10;}
-        .compass-line { position: absolute; height: 3px; transform-origin: left center; left: 50%; top: 50%; border-radius: 2px; }
+        .compass-line { position: absolute; height: 3px; transform-origin: 0% 50%; left: 50%; top: 50%; border-radius: 2px; }
+        
         .line-29 { width: 175px; transform: translateY(-50%) rotate(-61deg); background: rgba(255, 255, 255, 0.2); border-top: 1px dashed rgba(255, 255, 255, 0.4); }
         .line-151 { width: 175px; transform: translateY(-50%) rotate(61deg); background: rgba(255, 255, 255, 0.2); border-top: 1px dashed rgba(255, 255, 255, 0.4); }
-        .live-wind-vector { position: absolute; height: 4px; width: 175px; background: var(--rws); transform-origin: left center; left: 50%; top: 50%; transition: transform 2s cubic-bezier(0.25, 1, 0.5, 1); box-shadow: 0 0 15px var(--rws); z-index: 8; }
+        .live-wind-vector { position: absolute; height: 4px; width: 175px; background: var(--rws); transform-origin: 0% 50%; left: 50%; top: 50%; transition: transform 0.5s linear; box-shadow: 0 0 15px var(--rws); z-index: 8; }
         .live-wind-vector::after { content: ''; position: absolute; right: 0; top: -4px; border-left: 12px solid var(--rws); border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
+        
         .compass-label { position: absolute; font-weight: bold; font-size: 1.2rem; color: #fff; text-shadow: 0 0 5px #fff; }
         .label-n { top: -30px; } .label-e { right: -30px; } .label-s { bottom: -30px; } .label-w { left: -30px; }
         .windrose-data { text-align: center; background: rgba(0,0,0,0.6); padding: 20px; border: 1px solid var(--border); border-radius: 5px; width: 80%; max-width: 400px; }
         .windrose-data h3 { margin: 0 0 10px 0; color: #fff; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; }
         .windrose-data .math-highlight { color: var(--rws); font-size: 1.2rem; font-weight: bold; text-shadow: 0 0 10px rgba(0, 119, 255, 0.4); display: flex; justify-content: space-between; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; }
-        .windrose-data .static-calc { color: #888; font-size: 0.8rem; margin-top: 10px; }
         
         /* --- DOCUMENT LAYER STYLES --- */
         #document-layer { display: none; overflow-y: auto; background-color: #f3f5f6; color: #212124; font-family: 'Proxima Nova', 'Helvetica Neue', Helvetica, Arial, sans-serif; z-index: 15; }
@@ -174,6 +183,7 @@
         .entry.rws { border-left-color: var(--rws); color: #fff; background: rgba(0, 119, 255, 0.1); padding: 5px 10px; }
         .entry.knmi { border-left-color: var(--knmi); color: var(--knmi); }
         .entry.drill { border-left-color: var(--drill); color: var(--drill); font-weight: bold; }
+        .entry.app { border-left-color: var(--app); color: var(--app); font-weight: bold; }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
         
         .input-deck { padding: 15px; background: var(--panel); border-top: 1px solid var(--border); }
@@ -193,24 +203,60 @@
 </head>
 <body>
 
-<div class="vortex-container">
+<div class="vortex-container" id="main-container">
     
-    <section class="pane tree-pane">
+    <section class="pane tree-pane" id="pane-directory">
         <div class="header">DATA_DIRECTORIES</div>
         <div class="tree-container">
             <ul class="tree-root">
                 <li>
                     <div class="tree-folder open" onclick="toggleTree(this)">VORTEX_CORE_DB</div>
                     <ul class="tree-node active">
-                        
+
                         <li>
-                            <div class="tree-folder open" onclick="toggleTree(this)">DATALAYERS</div>
+                            <div class="tree-folder open" onclick="toggleTree(this)">APP_DATACENTER</div>
                             <ul class="tree-node active">
                                 <li>
-                                    <div class="tree-folder open" onclick="toggleTree(this)">BRUG_INFORMATIE</div>
+                                    <div class="tree-folder open" onclick="toggleTree(this)">ANTIPODAL_BRIDGES</div>
                                     <ul class="tree-node active">
-                                        <li class="tree-file data-toggle" onclick="toggleProvider('brug_tholen', this)">[ ] Brug_Tholen.stream</li>
-                                        <li class="tree-file data-toggle" onclick="toggleProvider('zeelandbrug', this)">[ ] Zeelandbrug.stream</li>
+                                        <li class="tree-file app-link" onclick="simulateCmd('app antipodal_zuid')">Antipodal_Zuid.app</li>
+                                        <li class="tree-file app-link" onclick="simulateCmd('app antipodal_noord')">Antipodal_Noord.app</li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <div class="tree-folder open" onclick="toggleTree(this)">INFRA_NETWERKEN</div>
+                                    <ul class="tree-node active">
+                                        <li>
+                                            <div class="tree-folder" onclick="toggleTree(this)">BRUGGEN</div>
+                                            <ul class="tree-node">
+                                                <li class="tree-file tactical" onclick="simulateCmd('tactical brug_tholen')">Brug_Tholen.vec</li>
+                                                <li class="tree-file tactical" onclick="simulateCmd('tactical zeelandbrug')">Zeelandbrug.vec</li>
+                                                <li class="tree-file tactical" onclick="simulateCmd('tactical oesterdam')">Oesterdam.vec</li>
+                                            </ul>
+                                        </li>
+                                        <li class="tree-file app-link" onclick="simulateCmd('app fietsnetwerk')">Fiets_Netwerk.app</li>
+                                        <li class="tree-file app-link" onclick="simulateCmd('app veerpont')">Veerpont_Netwerk.app</li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <div class="tree-folder" onclick="toggleTree(this)">RESONATOREN_NEXUS</div>
+                                    <ul class="tree-node">
+                                        <li class="tree-file app-link" onclick="simulateCmd('app klokbeker')">Klokbeker_Resonator.app</li>
+                                        <li class="tree-file app-link" onclick="simulateCmd('app hexnexus')">Hex_Nexus.app</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </li>
+                        
+                        <li>
+                            <div class="tree-folder" onclick="toggleTree(this)">DATALAYERS</div>
+                            <ul class="tree-node">
+                                <li>
+                                    <div class="tree-folder" onclick="toggleTree(this)">RAFFINADERIJEN</div>
+                                    <ul class="tree-node">
+                                        <li class="tree-file data-toggle" onclick="toggleProvider('shell_pernis', this)">[ ] Shell_Pernis.stream</li>
+                                        <li class="tree-file data-toggle" onclick="toggleProvider('bp_rotterdam', this)">[ ] BP_Rotterdam.stream</li>
+                                        <li class="tree-file data-toggle" onclick="toggleProvider('zeeland_refinery', this)">[ ] Zeeland_Refinery.stream</li>
                                     </ul>
                                 </li>
                             </ul>
@@ -252,14 +298,6 @@
                         </li>
 
                         <li>
-                            <div class="tree-folder" onclick="toggleTree(this)">-1_BRUGGEN</div>
-                            <ul class="tree-node">
-                                <li class="tree-file tactical" onclick="simulateCmd('tactical brug_tholen')">Target_Brug_Tholen.vec</li>
-                                <li class="tree-file tactical" onclick="simulateCmd('tactical zeelandbrug')">Target_Zeelandbrug.vec</li>
-                            </ul>
-                        </li>
-
-                        <li>
                             <div class="tree-folder" onclick="toggleTree(this)">ASSETS_MEDIA</div>
                             <ul class="tree-node">
                                 <li class="tree-file calc" onclick="simulateCmd('calc windroos')">Windroos_Gestrekte_Hoek.calc</li>
@@ -281,39 +319,45 @@
         </div>
     </section>
 
-    <section class="pane">
+    <section class="pane" id="pane-controls">
         <div class="header">SYSTEM_CONTROLS</div>
         <div style="padding: 15px; overflow-y: auto; height:calc(100% - 40px); box-sizing:border-box;">
             
-            <div class="control-group-title">MAP PROVIDER GATEWAY</div>
-            <button class="btn-ctrl" style="color:var(--sat); border-color:var(--sat);" onclick="simulateCmd('map provider dark')">[M] CARTO DARK (DEFAULT)</button>
-            <button class="btn-ctrl" style="color:var(--sat); border-color:var(--sat);" onclick="simulateCmd('map provider sat')">[M] ESRI SATELLITE</button>
-            <button class="btn-ctrl" style="color:var(--sat); border-color:var(--sat);" onclick="simulateCmd('map provider osm')">[M] OPENSTREETMAP</button>
+            <div class="control-group-title">APP DATACENTER (WEB APPS)</div>
+            <button class="btn-ctrl" style="color:var(--app); border-color:var(--app);" onclick="simulateCmd('app antipodal_zuid')">[APP] ANTIPODAL ZUID</button>
+            <button class="btn-ctrl" style="color:var(--app); border-color:var(--app);" onclick="simulateCmd('app antipodal_noord')">[APP] ANTIPODAL NOORD</button>
+            <button class="btn-ctrl" style="color:var(--app); border-color:var(--app);" onclick="simulateCmd('app hexnexus')">[APP] HEX-NEXUS</button>
+            <button class="btn-ctrl" style="color:var(--app); border-color:var(--app);" onclick="simulateCmd('app klokbeker')">[APP] KLOKBEKER RESONATOR</button>
+            <button class="btn-ctrl" style="color:var(--app); border-color:var(--app);" onclick="simulateCmd('app fietsnetwerk')">[APP] FIETS NETWERK</button>
+            <button class="btn-ctrl" style="color:var(--app); border-color:var(--app);" onclick="simulateCmd('app veerpont')">[APP] VEERPONT NETWERK</button>
+
+            <div class="control-group-title">TESSERACT DATA DRILL</div>
+            <button class="btn-ctrl" style="color:var(--drill); border-color:var(--drill);" onclick="simulateCmd('fetch data shell')">[X] FETCH DATA: SHELL PERNIS</button>
 
             <div class="control-group-title">LIVE DATA PROVIDERS</div>
             <button class="btn-ctrl" style="color:var(--rws); border-color:var(--rws);" onclick="simulateCmd('rws connect')">[P] RWS: LIVE WINDROOS</button>
             <button class="btn-ctrl" style="color:var(--knmi); border-color:var(--knmi);" onclick="simulateCmd('knmi connect')">[P] KNMI: WEER RADAR (MOCK)</button>
 
+            <div class="control-group-title">MAP PROVIDER GATEWAY</div>
+            <button class="btn-ctrl" style="color:var(--sat); border-color:var(--sat);" onclick="simulateCmd('map provider dark')">[M] CARTO DARK (DEFAULT)</button>
+            <button class="btn-ctrl" style="color:var(--sat); border-color:var(--sat);" onclick="simulateCmd('map provider sat')">[M] ESRI SATELLITE</button>
+            <button class="btn-ctrl" style="color:var(--sat); border-color:var(--sat);" onclick="simulateCmd('map provider osm')">[M] OPENSTREETMAP</button>
+
+            <div class="control-group-title">INFRA NETWERKEN (BRUGGEN)</div>
+            <button class="btn-ctrl" style="color:var(--tactical); border-color:var(--tactical);" onclick="simulateCmd('tactical brug_tholen')">[T] BRUG THOLEN</button>
+            <button class="btn-ctrl" style="color:var(--tactical); border-color:var(--tactical);" onclick="simulateCmd('tactical zeelandbrug')">[T] ZEELANDBRUG</button>
+            <button class="btn-ctrl" style="color:var(--tactical); border-color:var(--tactical);" onclick="simulateCmd('tactical oesterdam')">[T] OESTERDAM</button>
+
             <div class="control-group-title">KADASTRALE ATLAS 1832</div>
             <button class="btn-ctrl" style="color:var(--kadaster); border-color:var(--kadaster);" onclick="simulateCmd('kadaster smd')">[K] SINT-MAARTENSDIJK</button>
             <button class="btn-ctrl" style="color:var(--kadaster); border-color:var(--kadaster);" onclick="simulateCmd('kadaster scherpenisse')">[K] SCHERPENISSE</button>
-            <button class="btn-ctrl" style="color:var(--kadaster); border-color:var(--kadaster);" onclick="simulateCmd('kadaster tholen')">[K] THOLEN STAD</button>
 
             <div class="control-group-title">ARCHEOLOGIE RECORDS</div>
             <button class="btn-ctrl" style="color:var(--neural); border-color:var(--neural);" onclick="simulateCmd('archeo kasteel')">[A] KASTEEL ST. MAARTENSDIJK</button>
             <button class="btn-ctrl" style="color:var(--neural); border-color:var(--neural);" onclick="simulateCmd('archeo verdronken')">[A] VERDRONKEN DORP</button>
-            <button class="btn-ctrl" style="color:var(--neural); border-color:var(--neural);" onclick="simulateCmd('archeo artefacten')">[A] KLOKBEKER ARTEFACTEN</button>
-
-            <div class="control-group-title">TACTICAL VECTORS (BRUGGEN)</div>
-            <button class="btn-ctrl" style="color:var(--tactical); border-color:var(--tactical);" onclick="simulateCmd('tactical brug_tholen')">[T] BRUG THOLEN</button>
-            <button class="btn-ctrl" style="color:var(--tactical); border-color:var(--tactical);" onclick="simulateCmd('tactical zeelandbrug')">[T] ZEELANDBRUG</button>
 
             <div class="control-group-title">DATABASE RECORDS</div>
             <button class="btn-ctrl" style="color:var(--main); border-color:var(--main);" onclick="simulateCmd('db list')">[L] OPEN DB RECORDS VIEWPORT</button>
-
-            <div class="control-group-title">MAP NAVIGATIE & DATA</div>
-            <button class="btn-ctrl" style="color:var(--main); border-color:var(--main); font-weight:bold;" onclick="simulateCmd('map mark')">>> ENABLE DATA POINT MODE</button>
-            <button class="btn-ctrl" style="color:var(--main); border-color:var(--main);" onclick="simulateCmd('map scan')">> ENGINE: SCAN GEO DATA</button>
 
             <div class="control-group-title">VIEWPORT MODES</div>
             <button class="btn-ctrl" style="color:var(--neural); border-color:var(--neural);" onclick="simulateCmd('dual rws')">[#] SPLIT: MAP + LIVE WIND</button>
@@ -322,11 +366,17 @@
         </div>
     </section>
 
-    <section class="pane expanded">
+    <section class="pane expanded" id="pane-viewport">
         <div class="header">
             <span id="vp-title">VIEWPORT // QUANTUM HOLOGRAPHY</span>
+            <div class="vp-controls">
+                <button class="vp-btn" onclick="toggleFocusMode()" id="btn-focus" title="Verberg zijpanelen">[ ] FOCUS</button>
+                <button class="vp-btn" onclick="toggleTerminalMode()" id="btn-term" title="Verberg terminal">[_] TERMINAL</button>
+                <button class="vp-btn" onclick="toggleFullScreen()" title="Volledig scherm">[F] FULLSCREEN</button>
+            </div>
         </div>
         <div class="viewport-engine hologram" id="vp-engine">
+            
             <div id="map-layer" style="display: block;"></div>
             
             <div id="tesseract-layer" style="display: flex;">
@@ -375,35 +425,25 @@
                     <div class="record-coords">LAT: 51.5285 // LON: 4.0450</div>
                     <div class="record-type type-archeo">ARCHEOLOGIE</div>
                 </div>
-                <div class="record-item" onclick="loadPOI('arch_artefacten', 'Klokbeker Artefacten', 'archeo')">
-                    <div class="record-title">Klokbeker Artefacten</div>
-                    <div class="record-coords">LAT: 51.5620 // LON: 4.0910</div>
-                    <div class="record-type type-archeo">ARCHEOLOGIE</div>
-                </div>
                 <div class="record-item" onclick="loadPOI('smd', 'Sint-Maartensdijk (1832)', 'kadaster')">
                     <div class="record-title">Sint-Maartensdijk (Centrum)</div>
                     <div class="record-coords">LAT: 51.5478 // LON: 4.0782</div>
                     <div class="record-type type-kadaster">KADASTER 1832</div>
                 </div>
-                <div class="record-item" onclick="loadPOI('scherpenisse', 'Scherpenisse (1832)', 'kadaster')">
-                    <div class="record-title">Scherpenisse</div>
-                    <div class="record-coords">LAT: 51.5485 // LON: 4.0945</div>
-                    <div class="record-type type-kadaster">KADASTER 1832</div>
-                </div>
-                <div class="record-item" onclick="loadPOI('tholen', 'Tholen Stad (1832)', 'kadaster')">
-                    <div class="record-title">Tholen Stad</div>
-                    <div class="record-coords">LAT: 51.5350 // LON: 4.2215</div>
-                    <div class="record-type type-kadaster">KADASTER 1832</div>
-                </div>
                 <div class="record-item" onclick="loadPOI('brug_tholen', 'Brug Tholen', 'tactical')">
                     <div class="record-title">Brug Tholen / Oesterdam approach</div>
                     <div class="record-coords">LAT: 51.5280 // LON: 4.2385</div>
-                    <div class="record-type type-tactical">TACTICAL VECTOR</div>
+                    <div class="record-type type-tactical">INFRA / BRUGGEN</div>
                 </div>
                 <div class="record-item" onclick="loadPOI('zeelandbrug', 'Zeelandbrug', 'tactical')">
                     <div class="record-title">Zeelandbrug</div>
                     <div class="record-coords">LAT: 51.6150 // LON: 3.9100</div>
-                    <div class="record-type type-tactical">TACTICAL VECTOR</div>
+                    <div class="record-type type-tactical">INFRA / BRUGGEN</div>
+                </div>
+                <div class="record-item" onclick="loadPOI('oesterdam', 'Oesterdam (Sluizen)', 'tactical')">
+                    <div class="record-title">Oesterdam (Sluizen)</div>
+                    <div class="record-coords">LAT: 51.4550 // LON: 4.2000</div>
+                    <div class="record-type type-tactical">INFRA / BRUGGEN</div>
                 </div>
             </div>
 
@@ -411,16 +451,10 @@
                 <div class="photo-well" style="background-color: #212124; display: flex; justify-content: center; align-items: center; padding: 40px 20px;">
                     <img class="main-photo" src="https://live.staticflickr.com/65535/55205088641_76af4c75e2_h.jpg" alt="Schermafdruk van 2026-04-13 17-15-19" style="max-width: 100%; max-height: 80vh; box-shadow: 0 2px 8px rgba(0,0,0,0.5);">
                 </div>
-                <div class="content-container">
-                    <div class="owner-info">Door: Johanna de Bout van Vrijbergen | Geüpload op 13 april 2026</div>
-                    <div class="title-desc-block">
-                        <h1 class="photo-title">Schermafdruk van 2026-04-13 17-15-19</h1>
-                        <h2 class="photo-desc">
-                            <p>Berekening windroos hoeken (Gestrekte hoek):</p>
-                            <div style="background:#f4f4f4; padding:5px 10px; border:1px solid #ddd; font-family:monospace; display:inline-block; margin-top:8px;">29&deg; + 151&deg; = 180&deg;</div>
-                        </h2>
-                    </div>
-                </div>
+            </div>
+
+            <div id="iframe-layer">
+                <iframe id="app-frame" src=""></iframe>
             </div>
             
             <div id="override-tracker" tabindex="0"></div>
@@ -428,11 +462,11 @@
         </div>
     </section>
 
-    <section class="pane">
+    <section class="pane" id="pane-terminal">
         <div class="header">NEURAL_CLI_TERMINAL</div>
         <div id="stream">
-            <div class="entry"><b>[BOOT]:</b> Archeo-Matrix v199.0 Geïnitialiseerd.</div>
-            <div class="entry map"><b>[SYSTEM]:</b> Map Directory: Bruggen, Tesseract Drill & Records Viewport online.</div>
+            <div class="entry"><b>[BOOT]:</b> Archeo-Matrix v205.0 Geïnitialiseerd.</div>
+            <div class="entry app"><b>[SYSTEM]:</b> Klokbeker Resonator live-verbinding geïntegreerd via Vercel Uplink.</div>
         </div>
         <div class="input-deck">
             <input type="text" class="v-input" id="cli-input" placeholder="Voer commando in ('help')..." onkeypress="handleCmd(event)">
@@ -442,6 +476,63 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    // --- UI TOGGLES (FOCUS / FULLSCREEN) ---
+    let focusMode = false;
+    let terminalHidden = false;
+
+    function toggleFocusMode() {
+        focusMode = !focusMode;
+        const dirPane = document.getElementById('pane-directory');
+        const ctrlPane = document.getElementById('pane-controls');
+        const btnFocus = document.getElementById('btn-focus');
+        
+        if(focusMode) {
+            dirPane.classList.add('hidden');
+            ctrlPane.classList.add('hidden');
+            btnFocus.innerText = "[x] FOCUS";
+            btnFocus.style.background = "var(--ai-glow)";
+            btnFocus.style.color = "#000";
+            pushLog("<b>[UI]:</b> Focus modus geactiveerd.", "neural");
+        } else {
+            dirPane.classList.remove('hidden');
+            ctrlPane.classList.remove('hidden');
+            btnFocus.innerText = "[ ] FOCUS";
+            btnFocus.style.background = "#000";
+            btnFocus.style.color = "var(--ai-glow)";
+            pushLog("<b>[UI]:</b> Standaard weergave hersteld.", "neural");
+        }
+        setTimeout(() => { if(map) map.invalidateSize(); }, 400); 
+    }
+
+    function toggleTerminalMode() {
+        terminalHidden = !terminalHidden;
+        const termPane = document.getElementById('pane-terminal');
+        const btnTerm = document.getElementById('btn-term');
+        
+        if(terminalHidden) {
+            termPane.classList.add('hidden');
+            btnTerm.innerText = "[x] TERMINAL";
+            btnTerm.style.background = "var(--ai-glow)";
+            btnTerm.style.color = "#000";
+        } else {
+            termPane.classList.remove('hidden');
+            btnTerm.innerText = "[_] TERMINAL";
+            btnTerm.style.background = "#000";
+            btnTerm.style.color = "var(--ai-glow)";
+        }
+        setTimeout(() => { if(map) map.invalidateSize(); }, 400);
+    }
+
+    function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                pushLog(`<b>[ERROR]:</b> Fullscreen geweigerd: ${err.message}`, "tact");
+            });
+        } else {
+            if (document.exitFullscreen) { document.exitFullscreen(); }
+        }
+    }
+
     // --- CHERRYTREE TOGGLE LOGIC ---
     function toggleTree(element) {
         element.classList.toggle('open');
@@ -460,13 +551,13 @@
             delete activeProviders[id];
             el.innerText = el.innerText.replace('[x]', '[ ]');
             el.classList.remove('active');
-            pushLog(`<b>[DATALAYER]:</b> Datastroom ${id} verbroken.`, 'map');
+            pushLog(`<b>[DATALAYER]:</b> Provider ${id} verbinding verbroken.`, 'map');
             if(Object.keys(activeProviders).length === 0) deactivateDrillMode();
         } else {
             activeProviders[id] = true;
             el.innerText = el.innerText.replace('[ ]', '[x]');
             el.classList.add('active');
-            pushLog(`<b>[DATALAYER]:</b> Verbinden met ${id}...`, 'drill');
+            pushLog(`<b>[DATALAYER]:</b> Verbinding met ${id} opzetten...`, 'drill');
             
             if(!vpEngine.classList.contains('dual-drill')) activateDual('drill');
             
@@ -483,11 +574,11 @@
     const docLayer = document.getElementById('document-layer');
     const windroseLayer = document.getElementById('windrose-layer');
     const recordsLayer = document.getElementById('records-layer');
+    const iframeLayer = document.getElementById('iframe-layer');
     const vpTitle = document.getElementById('vp-title');
     const statusTag = document.getElementById('status-tag');
     const stream = document.getElementById('stream');
     const tracker = document.getElementById('override-tracker');
-    const btnHolo = document.getElementById('btn-holo');
 
     // --- LEAFLET MAP ENGINE ---
     let map;
@@ -499,7 +590,8 @@
     const coordsData = {
         smd: [51.5478, 4.0782], stavenisse: [51.5935, 4.0041], scherpenisse: [51.5485, 4.0945], poortvliet: [51.5447, 4.1440], tholen: [51.5350, 4.2215],
         arch_kasteel: [51.5490, 4.0795], arch_verdronken: [51.5285, 4.0450], arch_artefacten: [51.5620, 4.0910],
-        brug_tholen: [51.5280, 4.2385], zeelandbrug: [51.6150, 3.9100] // Herziene namen voor bruggen
+        brug_tholen: [51.5280, 4.2385], zeelandbrug: [51.6150, 3.9100], oesterdam: [51.4550, 4.2000],
+        shell_pernis: [51.8850, 4.3480], bp_rotterdam: [51.9420, 4.0950], zeeland_refinery: [51.4480, 3.7380]
     };
 
     let currentProvider = 'dark';
@@ -536,7 +628,7 @@
             mapProviders[providerKey].addTo(map);
             currentProvider = providerKey;
             
-            if(vpEngine.classList.contains('hologram') === false && tessLayer.style.display !== 'flex' && docLayer.style.display !== 'block' && windroseLayer.style.display !== 'flex' && recordsLayer.style.display !== 'flex') {
+            if(!vpEngine.classList.contains('hologram') && tessLayer.style.display !== 'flex' && docLayer.style.display !== 'block' && windroseLayer.style.display !== 'flex' && recordsLayer.style.display !== 'flex' && iframeLayer.style.display !== 'block') {
                 activateSingle('map');
             }
             pushLog(`<b>[MAP_GATEWAY]:</b> Provider gewijzigd naar ${providerKey.toUpperCase()}.`, "map");
@@ -546,10 +638,11 @@
     function hideAllLayers() {
         mapDiv.style.display = 'none'; tessLayer.style.display = 'none';
         docLayer.style.display = 'none'; windroseLayer.style.display = 'none';
-        recordsLayer.style.display = 'none';
+        recordsLayer.style.display = 'none'; iframeLayer.style.display = 'none';
         vpEngine.classList.remove('dual', 'dual-rws', 'dual-drill', 'dual-records', 'hologram', 'tracker-active', 'kadaster-mode', 'tactical-mode', 'archeo-mode');
         projectToMap = false; isDrilling = false;
         projectionLayerGroup.clearLayers();
+        document.getElementById('app-frame').src = "about:blank"; 
     }
 
     function activateSingle(mode) {
@@ -563,6 +656,8 @@
             docLayer.style.display = 'block'; vpTitle.innerText = `VIEWPORT // ARCHIVE_DOCUMENT_VIEW`; statusTag.innerText = `DECRYPTED_FILE`;
         } else if (mode === 'windrose') {
             windroseLayer.style.display = 'flex'; vpTitle.innerText = `VIEWPORT // GEOMETRY_ENGINE_VECTORS`; statusTag.innerText = `CALC_MODE`;
+        } else if (mode === 'iframe') {
+            iframeLayer.style.display = 'block'; vpTitle.innerText = `VIEWPORT // EXTERNAL_APP_UPLINK`; statusTag.innerText = `UPLINK_ACTIVE`;
         }
     }
 
@@ -574,7 +669,6 @@
         if (type === 'rws') {
             vpEngine.classList.add('dual-rws'); windroseLayer.style.display = 'flex';
             vpTitle.innerText = `VIEWPORT // DUAL-CORE (GEO + LIVE WIND)`; statusTag.innerText = "RWS_SYNC_MODE";
-            pushLog("<b>[DUAL_CORE]:</b> Split-screen (Map + Windroos) geactiveerd.", "neural");
         } else if (type === 'drill') {
             vpEngine.classList.add('dual-drill'); tessLayer.style.display = 'flex';
             vpTitle.innerText = `VIEWPORT // DUAL-CORE (DATA EXTRACTION PLATFORM)`; statusTag.innerText = "DRILL_MODE_ACTIVE";
@@ -582,11 +676,9 @@
         } else if (type === 'records') {
             vpEngine.classList.add('dual-records'); recordsLayer.style.display = 'flex';
             vpTitle.innerText = `VIEWPORT // DUAL-CORE (GEO + DATABASE RECORDS)`; statusTag.innerText = "DB_SYNC_MODE";
-            pushLog("<b>[DUAL_CORE]:</b> Database Records viewport geactiveerd.", "neural");
         } else {
             vpEngine.classList.add('dual'); tessLayer.style.display = 'flex';
             vpTitle.innerText = `VIEWPORT // DUAL-CORE (GEO + 4D)`; statusTag.innerText = "SPLIT_SCREEN";
-            pushLog("<b>[DUAL_CORE]:</b> Split-screen (Map + Tesseract) geactiveerd.", "neural");
         }
     }
 
@@ -598,20 +690,15 @@
     }
 
     function loadPOI(locationKey, name, type) {
-        // Zorg dat de kaart minstens de helft krijgt, behoud dual-records als die open is
-        if(vpEngine.classList.contains('dual-records') === false && vpEngine.classList.contains('dual') === false && vpEngine.classList.contains('dual-rws') === false && vpEngine.classList.contains('dual-drill') === false) {
+        if(!vpEngine.classList.contains('dual-records') && !vpEngine.classList.contains('dual') && !vpEngine.classList.contains('dual-rws') && !vpEngine.classList.contains('dual-drill')) {
             activateSingle('map');
         }
         vpEngine.classList.remove('kadaster-mode', 'tactical-mode', 'archeo-mode');
         
         let iconClass, logType, borderColor;
-        if (type === 'kadaster') {
-            vpEngine.classList.add('kadaster-mode'); iconClass = 'kadaster-pin'; logType = 'kadaster'; borderColor = 'var(--kadaster)';
-        } else if (type === 'tactical') {
-            vpEngine.classList.add('tactical-mode'); iconClass = 'tactical-pin'; logType = 'tact'; borderColor = 'var(--tactical)';
-        } else if (type === 'archeo') {
-            vpEngine.classList.add('archeo-mode'); iconClass = 'archeo-pin'; logType = 'neural'; borderColor = 'var(--neural)';
-        }
+        if (type === 'kadaster') { vpEngine.classList.add('kadaster-mode'); iconClass = 'kadaster-pin'; logType = 'kadaster'; borderColor = 'var(--kadaster)'; } 
+        else if (type === 'tactical') { vpEngine.classList.add('tactical-mode'); iconClass = 'tactical-pin'; logType = 'tact'; borderColor = 'var(--tactical)'; } 
+        else if (type === 'archeo') { vpEngine.classList.add('archeo-mode'); iconClass = 'archeo-pin'; logType = 'neural'; borderColor = 'var(--neural)'; }
 
         const coords = coordsData[locationKey];
         if(!coords) return;
@@ -626,19 +713,15 @@
         pushLog(`<b>[VECTOR_SYNC]:</b> Data uitgelezen voor <span style="color:${borderColor}">${name}</span>.`, logType);
     }
 
-    // --- TESSERACT DRILL MODE ---
+    // --- DRILL MODE & STREAMS ---
     let isDrilling = false;
     function activateDrillMode(targetName) {
         isDrilling = true;
         document.getElementById('lock-stat').innerText = "EXTRACTION_ACTIVE";
         document.getElementById('drill-data').style.display = "block";
         pushLog(`<b>[DRILL_PLATFORM]:</b> Tesseract boormodus gestart op ${targetName}. Data stroom wordt binnengehaald...`, "drill");
-        
         if(drillInterval) clearInterval(drillInterval);
-        drillInterval = setInterval(() => {
-            let streamRate = (Math.random() * 5000 + 1000).toFixed(0);
-            document.getElementById('drill-stream').innerText = streamRate;
-        }, 150);
+        drillInterval = setInterval(() => { document.getElementById('drill-stream').innerText = (Math.random() * 5000 + 1000).toFixed(0); }, 150);
     }
 
     function deactivateDrillMode() {
@@ -657,7 +740,10 @@
         if(!vpEngine.classList.contains('dual-rws')) activateDual('rws');
         document.getElementById('rws-status').innerText = "RWS GATEWAY: ONLINE // OOSTERSCHELDE";
         document.getElementById('rws-status').style.color = "var(--rws)";
-        document.getElementById('live-wind-vector').style.display = "block";
+        
+        const liveVector = document.getElementById('live-wind-vector');
+        liveVector.style.display = "block";
+        
         pushLog("<b>[RWS_GATEWAY]:</b> Telemetrie link established. Ophalen live wind data Oosterschelde...", "rws");
         
         if(windInterval) clearInterval(windInterval);
@@ -665,7 +751,8 @@
         windInterval = setInterval(() => {
             let currentDeg = baseDeg + ((Math.random() * 10) - 5); 
             let speed = (12 + Math.random() * 6).toFixed(1); 
-            document.getElementById('live-wind-vector').style.transform = `translateY(-50%) rotate(${currentDeg - 90}deg)`;
+            let cssRot = currentDeg - 90;
+            liveVector.style.transform = `translateY(-50%) rotate(${cssRot}deg)`;
             document.getElementById('live-wind-readout').innerHTML = `<span>Richting: <b>${currentDeg.toFixed(1)}&deg;</b></span><span>Snelheid: <b>${speed} kts</b></span>`;
         }, 2000); 
     }
@@ -803,7 +890,6 @@
         
         let rotationSpeed = isDrilling ? 0.05 : 0.01;
         if(isScanning && !isLocked && !vpEngine.classList.contains('tracker-active')) angle += rotationSpeed;
-        
         let degYaw = ((angle + manualYaw) * 180 / Math.PI) % 360;
         if (degYaw < 0) degYaw += 360;
         
@@ -869,6 +955,7 @@
         else if (type === 'rws') d.className = 'entry rws';
         else if (type === 'knmi') d.className = 'entry knmi';
         else if (type === 'drill') d.className = 'entry drill';
+        else if (type === 'app') d.className = 'entry app';
         else if (type === 'neural') d.style.color = "var(--neural)";
         d.className += ' entry'; d.innerHTML = `> ${msg}`;
         stream.appendChild(d); stream.scrollTop = stream.scrollHeight;
@@ -887,46 +974,61 @@
             e.target.value = '';
             
             if(val === 'help' || val === '?') {
-                pushLog(`
-                <div style="color:var(--neural); margin-top:5px;">[SYSTEM COMMANDS]</div>
-                <table class="cmd-table">
-                  <tr><td>init</td><td>Reboot Archeo-Matrix system.</td></tr>
-                  <tr><td>db list</td><td>Toon geodata in Viewport Records.</td></tr>
-                  <tr><td>fetch data [naam]</td><td>Activeer Tesseract data drill.</td></tr>
-                  <tr><td>rws connect</td><td>Start live RWS Oosterschelde data link.</td></tr>
-                  <tr><td>knmi connect</td><td>Start KNMI Weerradar mock overlay.</td></tr>
-                  <tr><td>calc windroos</td><td>Open Geometry Engine voor vaste windroos.</td></tr>
-                  <tr><td>map provider [naam]</td><td>Wissel basiskaart (dark, sat, osm).</td></tr>
-                  <tr><td>archeo / kadaster</td><td>Navigeer naar historische POI's.</td></tr>
-                  <tr><td>dual / geo / project</td><td>Viewport layout opties.</td></tr>
-                  <tr><td>clear</td><td>Wist terminal buffer.</td></tr>
-                </table>`);
+                pushLog(`[SYSTEM COMMANDS] Beschikbaar: init, app [naam], rws connect, knmi connect, db list, calc windroos, map provider [dark/sat/osm], archeo [naam], tactical [naam], kadaster [naam], dual, geo.`, 'neural');
             }
             else if (val === 'init') {
                 stream.innerHTML = '';
-                pushLog("<b>[BOOT]:</b> Archeo-Matrix v199.0 Geïnitialiseerd.", "neural");
-                pushLog("<b>[SYSTEM]:</b> Map Directory: Bruggen, Tesseract Drill & Records Viewport online.", "map");
-                hideAllLayers();
-                activateHologram();
-                setMapProvider('dark');
+                pushLog("<b>[BOOT]:</b> Archeo-Matrix v204.0 Geïnitialiseerd.", "neural");
+                hideAllLayers(); activateHologram(); setMapProvider('dark');
+            }
+            else if (val.startsWith('app ')) {
+                let target = val.replace('app ', '').trim();
+                activateSingle('iframe');
+                
+                if (target === 'antipodal_zuid') {
+                    document.getElementById('app-frame').src = "https://vortex-omni-bridge-v26-5.vercel.app/antipodal.html";
+                    document.getElementById('vp-title').innerText = `VIEWPORT // APP: ANTIPODAL ZUID`;
+                    pushLog("<b>[APP_CENTER]:</b> Antipodal Zuid geladen.", "app");
+                } 
+                else if (target === 'antipodal_noord') {
+                    document.getElementById('app-frame').src = "https://vortex-omni-bridge-v26-5.vercel.app/antipodalN.html";
+                    document.getElementById('vp-title').innerText = `VIEWPORT // APP: ANTIPODAL NOORD`;
+                    pushLog("<b>[APP_CENTER]:</b> Antipodal Noord geladen.", "app");
+                }
+                else if (target === 'hexnexus') {
+                    document.getElementById('app-frame').src = "hex-nexus.html";
+                    document.getElementById('vp-title').innerText = `VIEWPORT // APP: HEX-NEXUS`;
+                    pushLog("<b>[APP_CENTER]:</b> Hex-Nexus geladen.", "app");
+                }
+                else if (target === 'klokbeker') {
+                    // VERBETERDE VERCEL LINK VOOR KLOKBEKER APP (Minder CORS problemen dan Github raw)
+                    document.getElementById('app-frame').src = "https://vortex-omni-bridge-v26-5.vercel.app/klokbeker.html";
+                    document.getElementById('vp-title').innerText = `VIEWPORT // APP: KLOKBEKER RESONATOR`;
+                    pushLog("<b>[APP_CENTER]:</b> Klokbeker Resonator geladen via Vercel Uplink.", "app");
+                }
+                else {
+                    document.getElementById('app-frame').src = "about:blank";
+                    document.getElementById('vp-title').innerText = `VIEWPORT // APP: ${target.toUpperCase()}`;
+                    pushLog(`<b>[APP_CENTER]:</b> Placeholder geladen voor: ${target}.`, "app");
+                }
             }
             else if (val.startsWith('fetch data')) {
                 let target = val.replace('fetch data', '').trim();
-                if(target.includes('tholen')) toggleProvider('brug_tholen', document.querySelector('.data-toggle'));
-                else if(target.includes('zeeland')) toggleProvider('zeelandbrug', document.querySelectorAll('.data-toggle')[1]);
-                else pushLog(`<span style="color:#ff3344">Specificeer target: tholen of zeeland.</span>`);
+                if(target.includes('shell')) toggleProvider('shell_pernis', document.querySelector('.data-toggle'));
+                else if(target.includes('zeeland')) toggleProvider('zeeland_refinery', document.querySelectorAll('.data-toggle')[2]);
+                else if(target.includes('bp')) toggleProvider('bp_rotterdam', document.querySelectorAll('.data-toggle')[1]);
+                else pushLog(`<span style="color:#ff3344">Specificeer target.</span>`);
             }
             else if(val === 'rws connect' || val.includes('rws')) startRWSStream();
             else if(val === 'knmi connect' || val.includes('knmi')) simulateKNMI();
-            else if(val === 'db list' || val === 'list coords' || val === 'list') {
-                activateDual('records');
+            else if(val === 'db list' || val === 'list coords' || val === 'list') { 
+                activateDual('records'); 
+                pushLog(`<b>[DB]:</b> Records weergegeven.`, 'normal');
             }
-            else if(val === 'zoom in') { map.zoomIn(); pushLog("<b>[MAP]:</b> Zoom In geactiveerd.", "map"); }
-            else if(val === 'zoom out') { map.zoomOut(); pushLog("<b>[MAP]:</b> Zoom Out geactiveerd.", "map"); }
-            else if(val === 'map mark' || val === 'mark') { toggleMarkerMode(); }
             else if(val === 'dual') { activateDual('tess'); }
             else if(val === 'dual rws') { activateDual('rws'); }
             else if(val === 'geo' || val === 'map') { activateSingle('map'); }
+            else if(val === 'map project' || val === 'project') { activateHologram(); }
             else if(val === 'archive penrose' || val === 'archive') {
                 activateSingle('document'); pushLog("<b>[ARCHIVE]:</b> Decrypting Penrose bridge sketch...", "neural");
             }
@@ -937,36 +1039,33 @@
                 document.getElementById('rws-status').style.color = "var(--windroos)";
                 document.getElementById('live-wind-vector').style.display = "none"; 
                 document.getElementById('live-wind-readout').innerHTML = `<span>29&deg; + 151&deg; = 180&deg; (Gestrekte Hoek)</span>`;
-                pushLog("<b>[GEOMETRY]:</b> Statische windroos vectoren (29° & 151°) geladen. Hoek: 180°.", "wind");
+                pushLog("<b>[GEOMETRY]:</b> Statische windroos geladen.", "wind");
             }
-            else if(val === 'map project' || val === 'project') {
-                activateHologram();
-            }
-            else if(val === 'map scan' || val === 'scan map') scanGeoData();
             else if (val.startsWith('map provider')) {
                 if (val.includes('dark')) setMapProvider('dark');
                 else if (val.includes('sat')) setMapProvider('sat');
                 else if (val.includes('osm')) setMapProvider('osm');
-                else pushLog(`<span style="color:#ff3344">Specificeer provider: dark, sat, of osm.</span>`);
             }
-            else if(val.includes('archeo')) {
+            else if(val.startsWith('archeo')) {
                 if(val.includes('kasteel')) loadPOI('arch_kasteel', 'Kasteel Sint-Maartensdijk', 'archeo');
                 else if(val.includes('verdronken') || val.includes('dorp')) loadPOI('arch_verdronken', 'Verdronken Dorp', 'archeo');
                 else if(val.includes('artefact') || val.includes('klokbeker')) loadPOI('arch_artefacten', 'Klokbeker Artefacten', 'archeo');
-                else pushLog(`<span style="color:#ff3344">Specificeer archeo: 'kasteel', 'verdronken' of 'artefacten'.</span>`);
             }
-            else if(val.includes('tactical') || val.includes('brug') || val.includes('zeeland')) {
+            else if(val.startsWith('tactical') || val.startsWith('brug')) {
                 if (val.includes('zeeland')) loadPOI('zeelandbrug', 'Zeelandbrug', 'tactical');
+                else if (val.includes('oester')) loadPOI('oesterdam', 'Oesterdam', 'tactical');
                 else loadPOI('brug_tholen', 'Brug Tholen', 'tactical');
             }
-            else if(val.includes('kadaster')) {
+            else if(val.startsWith('kadaster')) {
                 if(val.includes('smd') || val.includes('maartensdijk')) loadPOI('smd', 'Sint-Maartensdijk (1832)', 'kadaster');
                 else if(val.includes('stavenisse')) loadPOI('stavenisse', 'Stavenisse (1832)', 'kadaster');
                 else if(val.includes('tholen')) loadPOI('tholen', 'Tholen Stad (1832)', 'kadaster');
                 else if(val.includes('scherpenisse')) loadPOI('scherpenisse', 'Scherpenisse (1832)', 'kadaster');
-                else if(val.includes('poortvliet')) loadPOI('poortvliet', 'Poortvliet (1832)', 'kadaster');
-                else pushLog(`<span style="color:#ff3344">Specificeer perceel.</span>`);
             }
+            else if(val === 'zoom in') { map.zoomIn(); pushLog("<b>[MAP]:</b> Zoom In geactiveerd.", "map"); }
+            else if(val === 'zoom out') { map.zoomOut(); pushLog("<b>[MAP]:</b> Zoom Out geactiveerd.", "map"); }
+            else if(val === 'map mark' || val === 'mark') { toggleMarkerMode(); }
+            else if(val === 'map scan' || val === 'scan map') scanGeoData();
             else if(val.startsWith('tesseract')) {
                 if (val.includes('override') || val.includes('mouse') || val.includes('wasd')) {
                     if(!vpEngine.classList.contains('dual') && !vpEngine.classList.contains('hologram') && tessLayer.style.display !== 'flex') activateSingle('tesseract');
@@ -984,7 +1083,7 @@
                 else { activateSingle('tesseract'); pushLog("<b>[4D_CORE]:</b> Native Tesseract geactiveerd.", "tess"); }
             }
             else if(val === 'clear' || val === 'cls') stream.innerHTML = '';
-            else pushLog(`<span style="color:#ff3344">ERROR: Commando '${val}' niet herkend. Typ 'help'.</span>`);
+            else pushLog(`<span style="color:#ff3344">Commando '${val}' niet herkend. Typ 'help'.</span>`);
         }
     }
 
