@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VORTEX OMNI-BRIDGE // TESSERACT SELECTIE</title>
+    <style>
+        :root {
+            --neon-green: #00ff41;
+            --neon-blue: #00d2ff;
+            --dark-bg: #0a0a0a;
+            --panel-bg: #141414;
+            --border-color: #333;
+            --text-muted: #888;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: var(--dark-bg);
+            color: var(--neon-green);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 15px;
+            border-bottom: 2px solid var(--neon-green);
+            background: var(--panel-bg);
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .viewport {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #view-left {
+            border-right: 2px solid var(--neon-green);
+            flex: 1.5; /* Raster krijgt iets meer ruimte */
+        }
+
+        /* Raster Configuratie: 18 Kolommen */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(18, 1fr);
+            gap: 2px;
+            background-color: var(--border-color);
+            padding: 4px;
+            border-radius: 2px;
+            width: fit-content;
+        }
+
+        .cell {
+            width: 32px;
+            height: 32px;
+            background-color: #000;
+            border: 1px solid #111;
+            font-size: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s;
+            cursor: crosshair;
+            user-select: none;
+        }
+
+        .cell:hover {
+            background-color: #003300;
+        }
+
+        /* Tesseract Selectie Statussen */
+        .cell.tesseract-center {
+            background-color: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-blue);
+            font-weight: bold;
+            z-index: 2;
+        }
+
+        .cell.tesseract-node {
+            background-color: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 8px var(--neon-green);
+        }
+
+        .cell.tesseract-link {
+            background-color: rgba(0, 255, 65, 0.3);
+            color: #fff;
+        }
+
+        /* Tesseract Console Paneel */
+        .console {
+            background: #000;
+            border: 1px dashed var(--neon-blue);
+            padding: 15px;
+            font-size: 13px;
+            line-height: 1.5;
+            flex-grow: 1;
+            margin-bottom: 20px;
+            overflow-y: auto;
+            color: var(--neon-blue);
+        }
+
+        h2 {
+            font-size: 18px;
+            margin-top: 0;
+            border-left: 4px solid var(--neon-green);
+            padding-left: 10px;
+            text-transform: uppercase;
+        }
+        
+        .tesseract-title {
+            border-left-color: var(--neon-blue);
+            color: var(--neon-blue);
+        }
+
+        #selected-points-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+
+        #selected-points-list li {
+            background: rgba(0, 210, 255, 0.1);
+            border: 1px solid rgba(0, 210, 255, 0.3);
+            padding: 5px;
+            font-size: 11px;
+        }
+
+        .btn-clear {
+            background-color: var(--neon-blue);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-family: monospace;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-clear:hover {
+            background-color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="font-size: 20px; font-weight: bold;">VORTEX OMNI-BRIDGE // SYS NOTEBOOK</div>
+    <div style="font-size: 14px; color: var(--neon-blue);">[ MOD 11 ] TESSERACT GEO-SELECTIE ACTIEF</div>
+</header>
+
+<div class="main-container">
+    <div id="view-left" class="viewport">
+        <h2>MAGNETISCH VELD (18 Kols x 13 Rijen)</h2>
+        <p style="font-size: 12px; color: var(--text-muted);">Klik op een cel om een multidimensionale Tesseract-scan uit te voeren op het geselecteerde coördinaat.</p>
+        
+        <div id="magnetic-grid" class="grid-container">
+            </div>
+    </div>
+
+    <div id="view-right" class="viewport">
+        <h2 class="tesseract-title">TESSERACT DATA EXTRACTIE</h2>
+        
+        <div class="console">
+            <p>> Wachten op Tesseract ankerpunt...</p>
+            <ul id="selected-points-list">
+                </ul>
+        </div>
+
+        <div style="border: 1px dashed var(--neon-blue); padding: 15px; background: rgba(0, 210, 255, 0.05);">
+            <h3 style="color: var(--neon-blue); margin-top: 0;">SELECTIE INFORMATIE</h3>
+            <p style="font-size: 12px; color: #ccc;">
+                De Tesseract selecteert het kernpunt, inclusief de 4 dimensionale spiegelpunten (nodes) en het verbindingspad (links) om anomalieën in het raster op te vangen.
+            </p>
+            <button class="btn-clear" onclick="clearSelection()">RESET TESSERACT SELECTIE</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const columns = 18;
+    const rows = 13;
+    const totalCells = columns * rows; // 234
+    const grid = document.getElementById('magnetic-grid');
+    const cells = []; // Array om alle cel-elementen op te slaan
+
+    // 1. Initialiseer het 18x13 raster
+    function initGrid() {
+        for (let i = 0; i < totalCells; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            
+            // Genereer magnetische waarde (simulatie)
+            const val = (Math.random() * 50).toFixed(1);
+            cell.innerText = val;
+            
+            // Bereken de X (kolom) en Y (rij) coördinaten (1-gebaseerd voor leesbaarheid)
+            const col = (i % columns) + 1;
+            const row = Math.floor(i / columns) + 1;
+            
+            cell.dataset.index = i;
+            cell.dataset.col = col;
+            cell.dataset.row = row;
+            cell.dataset.val = val;
+            cell.title = `Rij: ${row} | Kolom: ${col} \nWaarde: ${val} µT`;
+
+            // Koppel het klik-event voor de Tesseract selectie
+            cell.addEventListener('click', () => applyTesseract(i));
+
+            grid.appendChild(cell);
+            cells.push(cell); // Sla op in array voor makkelijke toegang
+        }
+    }
+
+    // 2. Tesseract Selectie Logica
+    function applyTesseract(centerIndex) {
+        clearSelection(); // Wis vorige selectie
+
+        const centerCol = (centerIndex % columns);
+        const centerRow = Math.floor(centerIndex / columns);
+
+        const selectedNodes = [];
+
+        // Hulpfunctie om een cel te selecteren als deze binnen het raster valt
+        function selectCell(c, r, type) {
+            if (c >= 0 && c < columns && r >= 0 && r < rows) {
+                const idx = (r * columns) + c;
+                cells[idx].classList.add(type);
+                selectedNodes.push(cells[idx]);
+            }
+        }
+
+        // --- Definieer het Tesseract Patroon ---
+        
+        // A. Het Kernpunt (Center)
+        selectCell(centerCol, centerRow, 'tesseract-center');
+
+        // B. De Directe Verbindingen (Kruis / Links)
+        selectCell(centerCol, centerRow - 1, 'tesseract-link'); // Boven
+        selectCell(centerCol, centerRow + 1, 'tesseract-link'); // Onder
+        selectCell(centerCol - 1, centerRow, 'tesseract-link'); // Links
+        selectCell(centerCol + 1, centerRow, 'tesseract-link'); // Rechts
+
+        // C. De Dimensionale Nodes (Hoeken van de hyperkubus projectie)
+        selectCell(centerCol - 2, centerRow - 2, 'tesseract-node'); // Linksboven
+        selectCell(centerCol + 2, centerRow - 2, 'tesseract-node'); // Rechtsboven
+        selectCell(centerCol - 2, centerRow + 2, 'tesseract-node'); // Linksonder
+        selectCell(centerCol + 2, centerRow + 2, 'tesseract-node'); // Rechtsonder
+
+        updateConsole(selectedNodes);
+    }
+
+    // 3. Wis actieve selecties
+    function clearSelection() {
+        cells.forEach(cell => {
+            cell.classList.remove('tesseract-center', 'tesseract-node', 'tesseract-link');
+        });
+        document.getElementById('selected-points-list').innerHTML = '';
+    }
+
+    // 4. Werk de output in het rechterpaneel bij
+    function updateConsole(nodes) {
+        const list = document.getElementById('selected-points-list');
+        list.innerHTML = ''; // Leeg de lijst
+
+        if (nodes.length === 0) return;
+
+        nodes.forEach(node => {
+            const li = document.createElement('li');
+            const type = node.classList.contains('tesseract-center') ? 'KERN' : 
+                         node.classList.contains('tesseract-node') ? 'NODE' : 'LINK';
+            
+            li.innerHTML = `<strong>${type}</strong> [R:${node.dataset.row}, K:${node.dataset.col}]<br>Waarde: ${node.dataset.val}`;
+            list.appendChild(li);
+        });
+    }
+
+    // Start de grid-generatie
+    initGrid();
+</script>
+
+</body>
+</html>
