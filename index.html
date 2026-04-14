@@ -3,120 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VORTEX OMNI-BRIDGE // UNIFIED SYNC</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <title>VORTEX OMNI-BRIDGE // MAIN HUB</title>
     <style>
-        :root { --bg: #050505; --main: #00ffcc; --els: #e67e22; --accent: #ff9900; --muted: #4a7c7c; }
-        * { box-sizing: border-box; }
-        body { background: var(--bg); color: var(--main); font-family: 'Courier New', monospace; margin: 0; padding: 5px; overflow-y: auto; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0a0a0a; border-left: 1px solid #1a1a1a; }
-        ::-webkit-scrollbar-thumb { background-color: #e67e22; border-radius: 2px; }
-        .bridge-container { display: flex; flex-direction: column; gap: 15px; }
-        .panel { background: rgba(2, 5, 8, 0.95); border: 1px solid rgba(230, 126, 34, 0.2); border-radius: 4px; padding: 15px; display: flex; flex-direction: column; }
-        h3 { font-size: 0.85rem; color: var(--accent); margin: 0 0 10px 0; text-transform: uppercase; border-bottom: 1px dashed rgba(230,126,34,0.3); padding-bottom: 5px; }
-        .viz-box { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; position: relative;}
-        canvas { background: #000; border-radius: 50%; border: 1px solid var(--muted); box-shadow: 0 0 20px rgba(230,126,34,0.1); width: 200px; height: 200px; }
-        #klokbeker-3d { width: 60px; height: 90px; border: 2px solid var(--main); border-radius: 20% 20% 45% 45%; transition: all 0.2s; }
-        .vibration { animation: res-shake 0.05s infinite; border-color: var(--els) !important; box-shadow: 0 0 30px var(--els); }
-        @keyframes res-shake { 0% { transform: scale(1); } 50% { transform: scale(1.05) rotate(1deg); } 100% { transform: scale(1); } }
-        .terminal { background: rgba(0,0,0,0.8); border: 1px solid var(--muted); padding: 10px; font-size: 0.7rem; color: #888; height: 100px; overflow-y: auto; margin-bottom: 10px; }
-        .qr-wrap { background: #fff; padding: 5px; width: 140px; height: 140px; align-self: center; border: 3px solid var(--main); }
-        .btn { width: 100%; padding: 12px; background: rgba(230,126,34,0.1); border: 1px solid var(--els); color: var(--els); cursor: pointer; font-weight: bold; text-transform: uppercase; transition: 0.3s;}
-        .btn:hover { background: var(--els); color: #000; }
-        .btn:disabled { opacity: 0.5; }
-        .heb-char { font-size: 2rem; color: var(--els); text-align: center; margin: 10px 0; display: none; text-shadow: 0 0 10px var(--els); }
+        /* --- GLOBALE STYLING --- */
+        :root {
+            --vortex-cyan: #00e5ff;
+            --vortex-magenta: #ff00ff;
+            --vortex-bg: #050505;
+            --vortex-alert: #ff003c;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--vortex-bg);
+            color: var(--vortex-cyan);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        /* --- HEADER --- */
+        header {
+            padding: 1.5rem 1rem;
+            border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+            text-align: center;
+            background: linear-gradient(180deg, rgba(0,229,255,0.1) 0%, transparent 100%);
+        }
+        .header-title {
+            font-size: 1.5rem;
+            letter-spacing: 4px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 10px var(--vortex-cyan);
+        }
+        .header-sub {
+            font-size: 0.8rem;
+            color: var(--vortex-magenta);
+            margin-top: 5px;
+            letter-spacing: 2px;
+        }
+
+        /* --- DASHBOARD GRID --- */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            flex-grow: 1;
+            align-content: start;
+        }
+
+        .module-btn {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--vortex-cyan);
+            color: var(--vortex-cyan);
+            padding: 20px 10px;
+            text-align: center;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            min-height: 80px;
+        }
+
+        .module-btn:hover, .module-btn:active {
+            background: rgba(0, 229, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .module-btn.magenta-theme {
+            border-color: var(--vortex-magenta);
+            color: var(--vortex-magenta);
+        }
+        .module-btn.magenta-theme:hover, .module-btn.magenta-theme:active {
+            background: rgba(255, 0, 255, 0.2);
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
+        }
+
+        .module-id {
+            font-size: 0.6rem;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+        .module-name {
+            font-size: 0.9rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* --- FOOTER STATUS --- */
+        footer {
+            border-top: 1px solid rgba(0, 229, 255, 0.3);
+            padding: 10px 20px;
+            font-size: 0.7rem;
+            display: flex;
+            justify-content: space-between;
+            background: #000;
+        }
+        .status-ok { color: #0f0; }
     </style>
 </head>
 <body>
-    <div class="bridge-container">
-        <div class="panel">
-            <h3>> SONIC COMMAND</h3>
-            <div class="terminal" id="logs">READY TO SCAN...</div>
-            <button class="btn" id="bootBtn" onclick="bootBridge()">ACTIVATE BRIDGE</button>
-            <div style="margin-top:15px; font-size:0.75rem; color: var(--muted); line-height: 1.5;">
-                STATUS: <span id="sys-status">IDLE</span><br>
-                OSCILLATOR: <span id="osc-stat" style="color:red">OFF</span><br>
-                RESONANCE: <span id="freq-val">0 Hz</span>
-            </div>
-        </div>
-        <div class="panel">
-            <h3>> OMNI-VISUALIZER</h3>
-            <div class="viz-box">
-                <canvas id="radar" width="200" height="200"></canvas>
-                <div id="klokbeker-3d"></div>
-            </div>
-            <div id="sync-label" style="text-align:center; font-size:0.75rem; font-weight:bold; color:red; margin-top:15px;">SEARCHING AZIMUTH 108°</div>
-        </div>
-        <div class="panel">
-            <h3>> ELS M2M SYNC</h3>
-            <div class="qr-wrap"><img id="qr" style="width:100%" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VORTEX_IDLE" alt="QR"></div>
-            <div id="heb-out" class="heb-char">ח ג א ח ב</div>
-            <div style="font-size:0.75rem; color:var(--muted); text-align:center; margin-top: 15px;">
-                AZIMUTH: <span id="deg-val" style="color:#fff">0°</span>
-            </div>
-        </div>
+
+    <header>
+        <div class="header-title">VORTEX OMNI-BRIDGE</div>
+        <div class="header-sub">SYSTEM VERSION v26.5</div>
+    </header>
+
+    <div class="grid-container">
+        <a href="klokbeker_toegang.html" class="module-btn magenta-theme">
+            <span class="module-id">[ MOD 01 ]</span>
+            <span class="module-name">SENSOR TRACKER</span>
+        </a>
+        <a href="klokbeker.html" class="module-btn">
+            <span class="module-id">[ MOD 02 ]</span>
+            <span class="module-name">KLOKBEKER CORE</span>
+        </a>
+        
+        <a href="klokbekerresonator.html" class="module-btn">
+            <span class="module-id">[ MOD 03 ]</span>
+            <span class="module-name">RESONATOR A</span>
+        </a>
+        <a href="indexresornator.html" class="module-btn">
+            <span class="module-id">[ MOD 04 ]</span>
+            <span class="module-name">RESONATOR B</span>
+        </a>
+
+        <a href="hex-nexus.html" class="module-btn magenta-theme">
+            <span class="module-id">[ MOD 05 ]</span>
+            <span class="module-name">HEX-NEXUS</span>
+        </a>
+        <a href="sonc-bridge.html" class="module-btn">
+            <span class="module-id">[ MOD 06 ]</span>
+            <span class="module-name">SONC-BRIDGE</span>
+        </a>
+        <a href="penrosebridge.html" class="module-btn">
+            <span class="module-id">[ MOD 07 ]</span>
+            <span class="module-name">PENROSE BRIDGE</span>
+        </a>
+
+        <a href="inversie.html" class="module-btn">
+            <span class="module-id">[ MOD 08 ]</span>
+            <span class="module-name">INVERSIE</span>
+        </a>
+        <a href="antipodal.html" class="module-btn">
+            <span class="module-id">[ MOD 09 ]</span>
+            <span class="module-name">ANTIPODAL X</span>
+        </a>
+        <a href="antipodalN.html" class="module-btn">
+            <span class="module-id">[ MOD 10 ]</span>
+            <span class="module-name">ANTIPODAL N</span>
+        </a>
+        <a href="kubus.html" class="module-btn">
+            <span class="module-id">[ MOD 11 ]</span>
+            <span class="module-name">TESSERACT</span>
+        </a>
+
+        <a href="workload.html" class="module-btn magenta-theme">
+            <span class="module-id">[ MOD 12 ]</span>
+            <span class="module-name">SYS WORKLOAD</span>
+        </a>
+        <a href="notebook.html" class="module-btn">
+            <span class="module-id">[ MOD 13 ]</span>
+            <span class="module-name">DATA NOTEBOOK</span>
+        </a>
     </div>
 
-    <script>
-        const canvas = document.getElementById('radar'); const ctx = canvas.getContext('2d');
-        const logs = document.getElementById('logs'); const beker = document.getElementById('klokbeker-3d');
-        const qr = document.getElementById('qr');
-        let angle = 0, isActive = false, isLocked = false, audioCtx, osc, gainNode;
+    <footer>
+        <span>HOST: 192.168.2.6</span>
+        <span>NETWORK: <span class="status-ok">ONLINE</span></span>
+    </footer>
 
-        function log(m) { logs.innerHTML += `<br>[${new Date().toLocaleTimeString()}] ${m}`; logs.scrollTop = logs.scrollHeight; }
-
-        function startVisualizer() { render(); log("Visualizer Engine Online."); }
-
-        async function bootBridge() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') await audioCtx.resume();
-            osc = audioCtx.createOscillator(); gainNode = audioCtx.createGain();
-            osc.type = 'sine'; osc.frequency.setValueAtTime(432, audioCtx.currentTime);
-            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-            osc.connect(gainNode); gainNode.connect(audioCtx.destination); osc.start();
-            isActive = true;
-            document.getElementById('sys-status').innerText = "SCANNING"; document.getElementById('sys-status').style.color = "#00ffcc";
-            document.getElementById('bootBtn').disabled = true; document.getElementById('bootBtn').innerText = "SCANNING ACTIVE";
-            log("Audio Oscillator (432Hz) geactiveerd.");
-        }
-
-        function render() {
-            const cx = 100, cy = 100; ctx.clearRect(0, 0, 200, 200);
-            ctx.strokeStyle = '#0a1f24'; ctx.lineWidth = 1;
-            for(let r = 25; r < 100; r += 25) { ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke(); }
-            
-            if (!isLocked) angle += 0.04;
-            const deg = Math.floor((angle * 180 / Math.PI) % 360);
-            document.getElementById('deg-val').innerText = deg + "°";
-
-            ctx.fillStyle = 'rgba(230, 126, 34, 0.15)'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, 100, angle, angle + 0.4); ctx.fill();
-
-            if(isActive && deg >= 106 && deg <= 110) {
-                if(!isLocked) {
-                    isLocked = true; angle = 108 * (Math.PI / 180); 
-                    beker.classList.add('vibration');
-                    
-                    // DE FIX: Fade-out na 1.5 seconde zodat de irritante toon stopt!
-                    if(gainNode) {
-                        gainNode.gain.setTargetAtTime(0.2, audioCtx.currentTime, 0.05); // Fade In
-                        gainNode.gain.setTargetAtTime(0, audioCtx.currentTime + 1.5, 0.5); // Fade Out na 1.5s
-                    }
-                    
-                    document.getElementById('sync-label').innerText = "SYNC LOCKED (108°)"; document.getElementById('sync-label').style.color = "#00ff00";
-                    document.getElementById('osc-stat').innerText = "ON (Pulsed)"; document.getElementById('osc-stat').style.color = "#00ff00";
-                    document.getElementById('freq-val').innerText = "432 Hz"; document.getElementById('freq-val').style.color = "#e67e22";
-                    document.getElementById('heb-out').style.display = "block";
-                    qr.src = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://nl.wikipedia.org/wiki/Sirius_(ster)";
-                    log("SYNC DETECTED: Sirius 108°. Systeem vergrendeld.");
-                    
-                    // Stuur signaal naar moederschip
-                    window.parent.postMessage({ type: 'VORTEX_SYNC_LOCKED' }, '*');
-                }
-            }
-            requestAnimationFrame(render);
-        }
-        window.onload = startVisualizer;
-    </script>
 </body>
 </html>
