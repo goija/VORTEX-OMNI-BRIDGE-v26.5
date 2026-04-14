@@ -3,335 +3,323 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VORTEX // MOBILE SCANNER</title>
+    <title>VORTEX OMNI-BRIDGE v26.5 // SENSOR-FIX</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        /* --- GLOBALE STYLING --- */
         :root {
             --vortex-cyan: #00e5ff;
             --vortex-magenta: #ff00ff;
+            --vortex-vega: #ffcc00;
             --vortex-bg: #050505;
-            --vortex-alert: #ff003c;
+            --vortex-amplitude: 1;
+            --vortex-rot-x: 0deg;
+            --vortex-rot-y: 0deg;
         }
 
         body {
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             background-color: var(--vortex-bg);
             color: var(--vortex-cyan);
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
+            font-family: 'Courier New', monospace;
+            height: 100vh; display: flex; flex-direction: column;
             overflow: hidden;
-            user-select: none;
+            touch-action: none; /* Voorkomt scrollen tijdens swipen */
+            cursor: grab;
+        }
+        body:active { cursor: grabbing; }
+
+        .dashboard {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 15px; padding: 20px; flex-grow: 1;
         }
 
-        /* --- HEADER --- */
-        header {
-            padding: 1rem;
-            border-bottom: 1px solid rgba(0, 229, 255, 0.3);
-            text-align: center;
-            background: linear-gradient(180deg, rgba(0,229,255,0.1) 0%, transparent 100%);
+        @media (max-width: 850px) { .dashboard { grid-template-columns: 1fr; } }
+
+        .panel {
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            padding: 20px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.6);
+            pointer-events: none; /* Zorgt dat sleep-events op de body aankomen */
         }
 
-        .header-title {
-            font-size: 1.2rem;
-            letter-spacing: 3px;
-            font-weight: bold;
-        }
-        
-        .header-sub {
-            font-size: 0.7rem;
-            color: var(--vortex-magenta);
+        /* 3D Stage */
+        #stage-vortex {
+            width: 250px; height: 250px; position: relative;
+            perspective: 1000px; display: flex; justify-content: center;
+            align-items: center; transform-style: preserve-3d;
         }
 
-        /* --- RADAR / TRACKER INTERFACE --- */
-        #radar-container {
-            flex-grow: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-        }
-
-        #radar-circle {
-            width: 250px;
-            height: 250px;
-            border: 2px dashed rgba(0, 229, 255, 0.3);
-            border-radius: 50%;
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: all 0.3s ease;
-        }
-
-        #radar-circle::before {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 1px;
-            background: rgba(0, 229, 255, 0.2);
-        }
-
-        #radar-circle::after {
-            content: '';
-            position: absolute;
-            width: 1px;
-            height: 100%;
-            background: rgba(0, 229, 255, 0.2);
-        }
-
-        /* Het compaskruis dat meedraait met de telefoon */
-        #compass-heading {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            border: 2px solid rgba(0, 229, 255, 0.8);
-            border-top: 4px solid var(--vortex-cyan); /* Noord-indicator */
-            transform-origin: center;
-            transition: transform 0.1s linear;
-        }
-
-        /* Het doelwit (Venus) op de radar */
-        #target-venus {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background-color: var(--vortex-magenta);
-            border-radius: 50%;
-            box-shadow: 0 0 15px var(--vortex-magenta);
-            transform-origin: 125px 125px; /* Draait rond het centrum van de 250px radar */
-            transition: transform 0.5s linear;
-        }
-
-        .center-dot {
-            width: 6px;
-            height: 6px;
-            background: var(--vortex-cyan);
-            border-radius: 50%;
+        #tesseract {
+            width: 60px; height: 100px; border: 2px solid var(--vortex-magenta);
+            position: absolute; transform-style: preserve-3d;
+            transform: scale(var(--vortex-amplitude)) rotateX(var(--vortex-rot-x)) rotateY(var(--vortex-rot-y));
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
             z-index: 10;
         }
 
-        /* --- TELEMETRIE DATA --- */
-        #telemetry-panel {
-            padding: 1.5rem;
-            border-top: 1px solid rgba(0, 229, 255, 0.3);
-            font-size: 0.85rem;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            background: rgba(0, 0, 0, 0.8);
+        #radar-ring {
+            width: 230px; height: 230px; border: 1px dashed var(--vortex-cyan);
+            border-radius: 50%; position: absolute;
+            transition: transform 0.05s linear;
         }
 
-        .data-label {
-            color: #666;
-            font-size: 0.7rem;
+        .dot {
+            position: absolute; width: 14px; height: 14px;
+            border-radius: 50%; left: 50%; top: 50%;
+            margin-left: -7px; margin-top: -7px;
+        }
+        #dot-venus { background: var(--vortex-magenta); box-shadow: 0 0 10px var(--vortex-magenta); }
+        #dot-vega { background: var(--vortex-vega); box-shadow: 0 0 10px var(--vortex-vega); }
+
+        /* UI */
+        .input-group {
+            display: flex; gap: 10px; margin-top: 20px;
+            pointer-events: auto; /* Zorgt dat we kunnen klikken */
         }
 
-        .data-value {
+        input {
+            background: #000; border: 1px solid var(--vortex-cyan);
+            color: var(--vortex-cyan); padding: 12px; text-align: center;
+            width: 140px; font-size: 1.1rem; outline: none;
+        }
+
+        button.btn-start {
+            background: #000; border: 1px solid var(--vortex-cyan);
+            color: var(--vortex-cyan); padding: 12px 20px; font-size: 1.1rem;
+            cursor: pointer; font-family: 'Courier New', monospace;
             font-weight: bold;
-            font-size: 1.1rem;
+        }
+        button.btn-start:active { background: var(--vortex-cyan); color: #000; }
+
+        #terminal {
+            width: 100%; height: 120px; background: #000;
+            border: 1px solid var(--vortex-magenta); font-size: 10px;
+            padding: 10px; overflow-y: auto; color: #888; margin-top: 15px;
+            pointer-events: auto;
         }
 
-        .data-value.magenta { color: var(--vortex-magenta); }
-        .data-value.alert { color: var(--vortex-alert); }
+        #qr-box { background: #fff; padding: 5px; display: none; margin-top: 10px; }
 
-        /* --- INITIATIE SCHERM (Voor iOS Permissies) --- */
-        #start-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: var(--vortex-bg);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 2rem;
-            text-align: center;
-        }
-
-        button {
-            background: transparent;
-            border: 1px solid var(--vortex-cyan);
-            color: var(--vortex-cyan);
-            padding: 15px 30px;
-            font-family: inherit;
-            font-size: 1.2rem;
-            margin-top: 2rem;
-            cursor: pointer;
-            text-transform: uppercase;
-        }
-
-        button:active {
-            background: var(--vortex-cyan);
-            color: #000;
-        }
-
-        /* VISUELE LOCK STATE */
-        body.lock-active {
-            box-shadow: inset 0 0 50px rgba(255, 0, 255, 0.3);
-        }
-        body.lock-active #radar-circle {
-            border-color: var(--vortex-magenta);
-            box-shadow: 0 0 30px rgba(255, 0, 255, 0.2);
+        .status-bar {
+            background: #000; border-top: 1px solid var(--vortex-cyan);
+            padding: 8px 20px; font-size: 11px; display: flex;
+            justify-content: space-between;
         }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay">
-        <div class="header-title">VORTEX FIELD SCANNER</div>
-        <div class="header-sub">M2M TELEMETRY LINK</div>
-        <p style="font-size: 0.8rem; color: #888; margin-top: 20px;">
-            Riching en gyroscoop sensoren vereist voor ruimtelijke tracking.
-        </p>
-        <button id="btn-init">INITIATE SENSORS</button>
+    <div class="dashboard">
+        <div class="panel">
+            <div style="font-size: 10px; opacity: 0.6; margin-bottom: 10px;">[ DOMEIN 9: RESONATOR ]</div>
+            <div id="stage-vortex">
+                <div id="radar-ring">
+                    <div id="dot-venus" class="dot"></div>
+                    <div id="dot-vega" class="dot"></div>
+                </div>
+                <div id="tesseract"></div>
+            </div>
+            
+            <div class="input-group">
+                <input type="number" id="vortex-input" placeholder="CODE (108)" autocomplete="off">
+                <button class="btn-start" id="btn-start">START</button>
+            </div>
+            
+            <div id="sensor-log" style="color: yellow; font-size: 9px; margin-top: 10px;">Awaiting interaction...</div>
+        </div>
+
+        <div class="panel">
+            <div style="font-size: 10px; opacity: 0.6; margin-bottom: 10px;">[ DOMEIN 11: M2M ]</div>
+            <div id="qr-box"></div>
+            <div id="terminal">> SYSTEM STANDBY. ENTER VECTOR 108...</div>
+        </div>
     </div>
 
-    <header>
-        <div class="header-title">LIVE TRACKER</div>
-        <div class="header-sub">TARGET: HELIOS-2 (VENUS)</div>
-    </header>
-
-    <div id="radar-container">
-        <div id="radar-circle">
-            <div id="compass-heading"></div>
-            <div id="target-venus"></div>
-            <div class="center-dot"></div>
-        </div>
-    </div>
-
-    <div id="telemetry-panel">
-        <div>
-            <div class="data-label">DEVICE HEADING</div>
-            <div class="data-value" id="val-heading">0.0°</div>
-        </div>
-        <div>
-            <div class="data-label">VENUS AZIMUTH</div>
-            <div class="data-value magenta" id="val-target">AWAITING...</div>
-        </div>
-        <div>
-            <div class="data-label">DISTANCE (AU)</div>
-            <div class="data-value" id="val-dist">0.723</div>
-        </div>
-        <div>
-            <div class="data-label">LOCK STATUS</div>
-            <div class="data-value alert" id="val-lock">SEARCHING</div>
-        </div>
+    <div class="status-bar">
+        <span>SUB-FREQ: 108Hz</span>
+        <span>HEADING: <span id="ui-h">0</span>°</span>
+        <span>LOCK: <span id="ui-l">NONE</span></span>
     </div>
 
     <script>
-        // --- CONSTANTEN & STATUS ---
-        // We simuleren Venus rond de 218 graden (gebaseerd op je eerdere screenshots)
-        let venusBaseAzimuth = 217.7; 
-        let currentHeading = 0;
-        let isLocked = false;
+        // --- 1. GLOBALE CONFIG ---
+        const PHI = 1.618033;
+        const VENUS_AZ = 217.7;
+        const VEGA_AZ = 315.4;
+        let isRunning = false;
+        let isManualMode = false;
+        let audioCtx, oscillator, gainNode;
+        let time = 0;
 
-        // DOM Elementen
-        const startOverlay = document.getElementById('start-overlay');
-        const btnInit = document.getElementById('btn-init');
-        const compassEl = document.getElementById('compass-heading');
-        const targetEl = document.getElementById('target-venus');
-        
-        const valHeading = document.getElementById('val-heading');
-        const valTarget = document.getElementById('val-target');
-        const valDist = document.getElementById('val-dist');
-        const valLock = document.getElementById('val-lock');
+        // --- 2. HOOFDLOGICA ROTATIE & TARGET LOCK ---
+        function updateHeading(heading) {
+            document.getElementById('ui-h').innerText = Math.round(heading) + (isManualMode ? ' (MANUAL)' : '');
+            
+            const ring = document.getElementById('radar-ring');
+            if (ring) ring.style.transform = `rotate(${-heading}deg)`;
 
-        // --- INITIATIE & PERMISSIES ---
-        btnInit.addEventListener('click', async () => {
-            // Check voor iOS 13+ device orientation permissions
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                try {
+            const lDisplay = document.getElementById('ui-l');
+            let dVenus = Math.abs(heading - VENUS_AZ); if (dVenus > 180) dVenus = 360 - dVenus;
+            let dVega = Math.abs(heading - VEGA_AZ); if (dVega > 180) dVega = 360 - dVega;
+            const logEl = document.getElementById('sensor-log');
+
+            if (dVenus < 8) {
+                lDisplay.innerText = "VENUS"; lDisplay.style.color = "var(--vortex-magenta)";
+                logEl.innerText = "SIGNAL DETECTED: HELIOS-2";
+                logEl.style.color = "var(--vortex-magenta)";
+            } else if (dVega < 8) {
+                lDisplay.innerText = "VEGA"; lDisplay.style.color = "var(--vortex-vega)";
+                logEl.innerText = "SIGNAL DETECTED: ALPHA LYRAE";
+                logEl.style.color = "var(--vortex-vega)";
+            } else {
+                lDisplay.innerText = "NONE"; lDisplay.style.color = "var(--vortex-cyan)";
+                logEl.innerText = isManualMode ? "MANUAL SCANNING: " + Math.round(heading) + "°" : "SCANNING: " + Math.round(heading) + "°";
+                logEl.style.color = "yellow";
+            }
+        }
+
+        // --- 3. HANDMATIGE BESTURING (FALLBACK VOOR HTTP / GEEN SENSOR) ---
+        function enableManualControls() {
+            if (isManualMode) return;
+            isManualMode = true;
+            
+            document.getElementById('sensor-log').innerText = "MANUAL OVERRIDE: SWIPE TO SCAN";
+            updateHeading(0);
+            
+            let isDragging = false;
+            let startX = 0;
+            let manualHeading = 0;
+
+            const startDrag = (x) => { isDragging = true; startX = x; };
+            const doDrag = (x) => {
+                if (!isDragging) return;
+                let deltaX = x - startX;
+                manualHeading -= deltaX * 0.5; 
+                if (manualHeading < 0) manualHeading += 360;
+                if (manualHeading >= 360) manualHeading -= 360;
+                startX = x;
+                updateHeading(manualHeading);
+            };
+            const endDrag = () => { isDragging = false; };
+
+            document.addEventListener('mousedown', (e) => startDrag(e.clientX));
+            document.addEventListener('mousemove', (e) => doDrag(e.clientX));
+            document.addEventListener('mouseup', endDrag);
+
+            document.addEventListener('touchstart', (e) => startDrag(e.touches[0].clientX), {passive: false});
+            document.addEventListener('touchmove', (e) => doDrag(e.touches[0].clientX), {passive: false});
+            document.addEventListener('touchend', endDrag);
+        }
+
+        // --- 4. SENSOR HANDLER ---
+        const orientationHandler = function(event) {
+            let alpha = event.alpha;
+            if (event.absolute === true || event.webkitCompassHeading !== undefined) {
+                alpha = event.webkitCompassHeading !== undefined ? event.webkitCompassHeading : (360 - event.alpha);
+            }
+            if (alpha !== null) {
+                document.sensorFired = true;
+                if (!isManualMode) updateHeading(alpha);
+            }
+        };
+
+        // --- 5. SYSTEEM ACTIVATIE ---
+        async function startVortex() {
+            if (isRunning) return;
+
+            try {
+                let permissionGranted = true;
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                     const permissionState = await DeviceOrientationEvent.requestPermission();
-                    if (permissionState === 'granted') {
-                        startTracking();
+                    if (permissionState !== 'granted') permissionGranted = false;
+                }
+
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+                oscillator = audioCtx.createOscillator();
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(108, audioCtx.currentTime);
+                gainNode = audioCtx.createGain();
+                gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                oscillator.connect(gainNode); 
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+
+                document.getElementById('qr-box').style.display = 'block';
+                setTimeout(() => {
+                    new QRCode(document.getElementById("qr-box"), { text: "VORTEX_108_SYNC", width: 120, height: 120 });
+                }, 100);
+                
+                document.getElementById('terminal').innerHTML = "<div>> AUTHENTICATED: 108</div><div>> SENSORS INITIATED.</div>";
+
+                if (!permissionGranted) {
+                    enableManualControls();
+                } else {
+                    document.sensorFired = false;
+                    if (window.DeviceOrientationAbsoluteEvent) {
+                        window.addEventListener("deviceorientationabsolute", orientationHandler, true);
                     } else {
-                        alert("Sensor toegang geweigerd.");
+                        window.addEventListener("deviceorientation", orientationHandler, true);
                     }
-                } catch (error) {
-                    console.error(error);
+                    setTimeout(() => {
+                        if (!document.sensorFired) enableManualControls();
+                    }, 1500);
                 }
-            } else {
-                // Non-iOS 13+ devices (Android etc.)
-                startTracking();
-            }
-        });
 
-        function startTracking() {
-            startOverlay.style.display = 'none';
-            
-            // Start de astronomische simulatie
-            setInterval(updateVenusPosition, 1000);
-            
-            // Luister naar het fysieke kompas van de telefoon
-            window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-            
-            // Fallback voor apparaten die absolute orientation niet goed doorgeven
-            window.addEventListener('deviceorientation', (e) => {
-                if(e.absolute !== true && e.webkitCompassHeading) {
-                    updateRadar(e.webkitCompassHeading); // Specifiek voor iOS kompas
-                } else if (e.absolute === true || e.alpha !== null) {
-                    // Standaard alpha waarde (0-360)
-                    let heading = 360 - e.alpha; 
-                    updateRadar(heading);
-                }
-            }, true);
-        }
-
-        // --- LOGICA ---
-
-        // 1. Simuleer een licht verschuivende baan voor Venus (om het "live" te laten voelen)
-        function updateVenusPosition() {
-            // Kleine variatie om de baan te simuleren
-            let timeDrift = Math.sin(Date.now() / 10000) * 0.5;
-            let currentVenusAzimuth = venusBaseAzimuth + timeDrift;
-            
-            valTarget.innerText = currentVenusAzimuth.toFixed(1) + '°';
-            
-            // Plaats Venus stip op de radar rand (radius = 125px, stip roteert)
-            // De transform roteert de stip rond het centrum van de cirkel
-            targetEl.style.transform = `rotate(${currentVenusAzimuth}deg) translateY(-125px)`;
-        }
-
-        // 2. Verwerk de fysieke rotatie van de telefoon
-        function updateRadar(heading) {
-            if (!heading) return;
-            currentHeading = heading;
-            valHeading.innerText = currentHeading.toFixed(1) + '°';
-
-            // Draai de interface tegen de richting in, zodat Noord altijd klopt met je telefoon
-            compassEl.style.transform = `rotate(${-currentHeading}deg)`;
-
-            // Check of we in de "Lock" zone zitten (tolerance van 5 graden)
-            let delta = Math.abs(currentHeading - venusBaseAzimuth);
-            // Corrigeer voor de 360/0 graden overgang
-            if (delta > 180) delta = 360 - delta;
-
-            if (delta <= 5.0) {
-                if (!isLocked) engageLock();
-            } else {
-                if (isLocked) disengageLock();
+                isRunning = true;
+                renderLoop();
+            } catch (err) {
+                enableManualControls();
+                isRunning = true;
+                renderLoop();
             }
         }
 
-        // 3. UI States
-        function engageLock() {
-            isLocked = true;
-            document.body.classList.add('lock-active');
-            valLock.innerText = "VECTOR LOCKED";
-            valLock.style.color = "var(--vortex-cyan)";
-            valDist.innerText = (0.723 + (Math.random() * 0.001)).toFixed(4) + " AU"; // Live jitter
+        // --- 6. ANIMATIE ---
+        function renderLoop() {
+            if (!isRunning) return;
+            time += 0.02;
+            const amp = Math.pow(PHI, Math.abs(Math.sin(time)));
+            document.documentElement.style.setProperty('--vortex-amplitude', amp);
+            document.documentElement.style.setProperty('--vortex-rot-x', (time * 18) + 'deg');
+            document.documentElement.style.setProperty('--vortex-rot-y', (time * 28) + 'deg');
+            
+            if (gainNode && audioCtx && audioCtx.state === 'running') {
+                gainNode.gain.setTargetAtTime(0.05 * amp, audioCtx.currentTime, 0.1);
+            }
+            requestAnimationFrame(renderLoop);
         }
 
-        function disengageLock() {
-            isLocked = false;
-            document.body.classList.remove('lock-active');
-            valLock.innerText = "SEARCHING";
-            valLock.style.color = "var(--vortex-alert)";
-        }
+        // --- 7. INITIALISATIE & EVENTS ---
+        window.onload = () => {
+            document.getElementById('dot-venus').style.transform = `rotate(${VENUS_AZ}deg) translateY(-115px)`;
+            document.getElementById('dot-vega').style.transform = `rotate(${VEGA_AZ}deg) translateY(-115px)`;
+
+            const inputEl = document.getElementById('vortex-input');
+            const btnStart = document.getElementById('btn-start');
+
+            function checkAuth() {
+                if (inputEl.value === '108') {
+                    startVortex();
+                    inputEl.disabled = true;
+                    btnStart.disabled = true;
+                    inputEl.value = "[ LOCKED ]";
+                } else {
+                    document.getElementById('terminal').innerHTML += "<div>> ACCESS DENIED.</div>";
+                    inputEl.value = "";
+                }
+            }
+
+            // Fix voor mobiel: Werkt nu op knopklik én Enter-toets
+            btnStart.addEventListener('click', checkAuth);
+            inputEl.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    e.preventDefault();
+                    checkAuth();
+                }
+            });
+        };
     </script>
 </body>
 </html>
