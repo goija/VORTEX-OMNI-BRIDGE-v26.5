@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VORTEX OMNI-BRIDGE // ELS DECODER</title>
+    <style>
+        :root {
+            --neon-green: #00ff41;
+            --neon-blue: #00d2ff;
+            --neon-purple: #b026ff;
+            --dark-bg: #0a0a0a;
+            --panel-bg: #141414;
+            --border-color: #333;
+        }
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: var(--dark-bg);
+            color: var(--neon-green);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        header {
+            padding: 15px;
+            border-bottom: 2px solid var(--neon-purple);
+            background: var(--panel-bg);
+            box-shadow: 0 0 15px rgba(176, 38, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+        }
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .viewport {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+        #view-left { border-right: 2px solid var(--neon-purple); flex: 1.5; }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(18, 1fr);
+            gap: 2px;
+            background-color: var(--border-color);
+            padding: 4px;
+            width: fit-content;
+        }
+        .cell {
+            width: 32px; height: 32px;
+            background-color: #000;
+            border: 1px solid #111;
+            font-size: 11px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; user-select: none; transition: 0.1s;
+        }
+        .cell:hover { background-color: #222; }
+        
+        /* ELS Statussen */
+        .els-start { background-color: #fff !important; color: #000; font-weight: bold; box-shadow: 0 0 10px #fff; z-index: 2; }
+        .els-path { background-color: var(--neon-purple); color: #fff; box-shadow: 0 0 8px var(--neon-purple); }
+        .els-active { background-color: var(--neon-blue); color: #000; transform: scale(1.1); box-shadow: 0 0 15px var(--neon-blue); }
+
+        .console {
+            background: #000; border: 1px dashed var(--neon-purple);
+            padding: 15px; font-size: 13px; line-height: 1.5;
+            flex-grow: 1; overflow-y: auto; color: var(--neon-purple);
+        }
+        .controls { display: flex; gap: 10px; margin-bottom: 15px; }
+        input[type="number"] {
+            background: #000; border: 1px solid var(--neon-purple); color: #fff;
+            padding: 5px; width: 60px; font-family: monospace;
+        }
+        button {
+            background-color: var(--neon-purple); color: #fff; border: none;
+            padding: 5px 15px; font-family: monospace; cursor: pointer; font-weight: bold;
+        }
+        button:hover { background-color: #fff; color: #000; }
+    </style>
+</head>
+<body>
+<header>
+    <div style="font-size: 20px; font-weight: bold;">VORTEX OMNI-BRIDGE // SYS NOTEBOOK</div>
+    <div style="font-size: 14px; color: var(--neon-purple);">[ MOD 11 ] ELS TORUS DECODER ACTIEF</div>
+</header>
+<div class="main-container">
+    <div id="view-left" class="viewport">
+        <h2 style="border-left: 4px solid var(--neon-purple); padding-left: 10px; margin-top: 0;">MAGNETISCH VELD (18 x 13)</h2>
+        <div class="controls">
+            <label>Start (1-234): <input type="number" id="els-start" value="144" min="1" max="234"></label>
+            <label>ELS Sprong (Skip): <input type="number" id="els-step" value="29" min="1" max="234"></label>
+            <button onclick="runELS()">TRACE ELS PAD</button>
+            <button onclick="clearGrid()" style="background-color: #333;">RESET</button>
+        </div>
+        <div id="magnetic-grid" class="grid-container"></div>
+    </div>
+    <div id="view-right" class="viewport">
+        <h2 style="border-left: 4px solid var(--neon-purple); color: var(--neon-purple); padding-left: 10px; margin-top: 0;">ELS DATA EXTRACTIE</h2>
+        <div class="console" id="console-log">
+            > Systeem gereed. Voer ELS parameters in en start de trace...<br>
+        </div>
+    </div>
+</div>
+
+<script>
+    const columns = 18;
+    const totalCells = 234;
+    const grid = document.getElementById('magnetic-grid');
+    const cells = [];
+    let traceInterval;
+
+    function initGrid() {
+        for (let i = 0; i < totalCells; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            const val = i + 1;
+            cell.innerText = val;
+            cell.addEventListener('click', () => {
+                document.getElementById('els-start').value = val;
+            });
+            grid.appendChild(cell);
+            cells.push(cell);
+        }
+    }
+
+    function clearGrid() {
+        clearInterval(traceInterval);
+        cells.forEach(c => c.className = 'cell');
+        document.getElementById('console-log').innerHTML = '> Grid gereset.<br>';
+    }
+
+    function runELS() {
+        clearGrid();
+        const startVal = parseInt(document.getElementById('els-start').value);
+        const step = parseInt(document.getElementById('els-step').value);
+        const consoleLog = document.getElementById('console-log');
+        
+        let path = [];
+        let currentIdx = startVal - 1; // Array is 0-based
+        
+        // Bereken het ELS pad totdat het zichzelf snijdt (een lus vormt)
+        while (!path.includes(currentIdx)) {
+            path.push(currentIdx);
+            // Torus Modulo Wiskunde: (Huidig + Sprong) % Totaal
+            currentIdx = (currentIdx + step) % totalCells;
+        }
+
+        consoleLog.innerHTML = `> ELS STARTPUNT: <strong>${startVal}</strong><br>`;
+        consoleLog.innerHTML += `> SPRONG (SKIP): <strong>${step}</strong><br>`;
+        consoleLog.innerHTML += `> LENGTE VAN DE LUS: <strong>${path.length} punten</strong><br><br>> Tracing pad...<br>`;
+
+        // Animatie om het decoderen visueel te maken
+        let stepCount = 0;
+        cells[path[0]].classList.add('els-start');
+
+        traceInterval = setInterval(() => {
+            if (stepCount > 0 && stepCount < path.length) {
+                // Maak de vorige stap een normaal pad
+                cells[path[stepCount - 1]].classList.replace('els-active', 'els-path');
+            }
+            
+            if (stepCount < path.length) {
+                // Laat de huidige stap oplichten
+                if (stepCount !== 0) cells[path[stepCount]].classList.add('els-active');
+                
+                // Scroll de console mee
+                consoleLog.innerHTML += `<span style="color:#888;">[Stap ${stepCount + 1}]</span> Node: ${path[stepCount] + 1}<br>`;
+                consoleLog.scrollTop = consoleLog.scrollHeight;
+                stepCount++;
+            } else {
+                cells[path[path.length - 1]].classList.replace('els-active', 'els-path');
+                consoleLog.innerHTML += `<br>> <strong>LUS GESLOTEN.</strong> Startpunt opnieuw bereikt.<br>`;
+                clearInterval(traceInterval);
+            }
+        }, 100); // Snelheid van de trace in milliseconden
+    }
+
+    initGrid();
+</script>
+</body>
+</html>
