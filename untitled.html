@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VORTEX OMNI-BRIDGE v26.5 // Domein 9</title>
+    <style>
+        /* Globale Styling - VORTEX Terminal Aesthetic */
+        :root {
+            --vortex-cyan: #00e5ff;
+            --vortex-magenta: #ff00ff;
+            --vortex-bg: #050505;
+            --vortex-amplitude: 1; /* Wordt dynamisch overschreven door JS */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--vortex-bg);
+            color: var(--vortex-cyan);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #vortex-domain-9 {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            padding: 3rem;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.1);
+        }
+
+        .header-text {
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            margin-bottom: 2rem;
+            text-align: center;
+            opacity: 0.8;
+        }
+
+        /* Activatie Knop */
+        button {
+            background: transparent;
+            border: 1px solid var(--vortex-cyan);
+            color: var(--vortex-cyan);
+            font-family: inherit;
+            font-size: 1rem;
+            letter-spacing: 1.5px;
+            padding: 12px 24px;
+            cursor: pointer;
+            margin-bottom: 4rem;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background: rgba(0, 229, 255, 0.1);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+        }
+
+        button.active-state {
+            border-color: var(--vortex-magenta);
+            color: var(--vortex-magenta);
+            animation: pulse-border 2s infinite;
+        }
+
+        /* 3D Klokbeker Wireframe (CSS Abstractie) */
+        #klokbeker-wireframe {
+            width: 120px;
+            height: 180px;
+            border: 1px dashed var(--vortex-cyan);
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* De schaal wordt real-time aangestuurd door Phi via de var() */
+            transform: scale(var(--vortex-amplitude));
+            transition: transform 0.05s linear;
+        }
+
+        #klokbeker-wireframe::before, #klokbeker-wireframe::after {
+            content: '';
+            position: absolute;
+            border: 1px solid rgba(0, 229, 255, 0.5);
+            border-radius: 50%;
+        }
+
+        /* Top opening */
+        #klokbeker-wireframe::before {
+            top: -15px;
+            width: 100%;
+            height: 30px;
+        }
+
+        /* Bodem */
+        #klokbeker-wireframe::after {
+            bottom: -10px;
+            width: 70%;
+            height: 20px;
+        }
+
+        #klokbeker-wireframe.active {
+            border-color: var(--vortex-cyan);
+            border-style: solid;
+            box-shadow: 0 0 calc(20px * var(--vortex-amplitude)) rgba(0, 229, 255, 0.6);
+        }
+
+        /* Telemetrie Data Display */
+        #telemetry {
+            margin-top: 3rem;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        #telemetry.visible {
+            opacity: 1;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 5px var(--vortex-magenta); }
+            50% { box-shadow: 0 0 20px var(--vortex-magenta); }
+            100% { box-shadow: 0 0 5px var(--vortex-magenta); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="vortex-domain-9">
+        <div class="header-text">
+            [ DOMAIN 9: ARCHEO-RESONATOR ]<br>
+            TARGET: 432.0 Hz // PHI-MODULATED
+        </div>
+
+        <button id="activate-bridge">ACTIVATE SONIC BRIDGE</button>
+        
+        <div id="klokbeker-wireframe" class="idle"></div>
+
+        <div id="telemetry">
+            <div>FREQ: <span style="color: #ff00ff;">432.00 Hz</span></div>
+            <div>w-VECTOR: <span id="data-w">0.000</span></div>
+            <div>PHI-SCALE: <span id="data-phi">1.000</span></div>
+        </div>
+    </div>
+
+    <script>
+        // --- VORTEX ENGINE: CORE CONSTANTS ---
+        const PHI = 1.61803398875;
+        const FREQUENCY_HZ = 432.0;
+        const BASE_VOLUME = 0.05; // Laag basisvolume om speakers te sparen (5%)
+
+        // Audio variabelen
+        let audioCtx;
+        let oscillator;
+        let gainNode;
+        let isRunning = false;
+        let time = 0;
+
+        // DOM Elementen
+        const btnActivate = document.getElementById('activate-bridge');
+        const klokbeker = document.getElementById('klokbeker-wireframe');
+        const telemetryPanel = document.getElementById('telemetry');
+        const displayW = document.getElementById('data-w');
+        const displayPhi = document.getElementById('data-phi');
+
+        function startVortexEngine() {
+            // 1. Initialiseer Web Audio API
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // 2. Creëer Oscillator (Sinusgolf voor 432Hz)
+            oscillator = audioCtx.createOscillator();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(FREQUENCY_HZ, audioCtx.currentTime);
+            
+            // 3. Creëer Gain Node (Volume controle)
+            gainNode = audioCtx.createGain();
+            gainNode.gain.setValueAtTime(BASE_VOLUME, audioCtx.currentTime);
+            
+            // 4. Verbind routing en start
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+            
+            // 5. Update UI Status
+            isRunning = true;
+            klokbeker.classList.remove('idle');
+            klokbeker.classList.add('active');
+            
+            btnActivate.innerText = "SYSTEM SYNCHRONIZED";
+            btnActivate.classList.add('active-state');
+            telemetryPanel.classList.add('visible');
+            
+            // 6. Start de render loop
+            renderLoop();
+        }
+
+        function renderLoop() {
+            if (!isRunning) return;
+
+            // A. Simuleer rotatie van de Tesseract (w-component van quaternion)
+            time += 0.015; // Snelheid van de cyclus
+            let w = Math.sin(time); // Oscilleert tussen -1 en 1
+
+            // B. Bereken de Phi-vermenigvuldiger: Phi^|w|
+            let phiMultiplier = Math.pow(PHI, Math.abs(w));
+
+            // C. Bereken dynamische amplitude
+            let dynamicAmplitude = BASE_VOLUME * phiMultiplier;
+
+            // D. Audio API Update (vloeiende overgang via setTargetAtTime)
+            // Tijdconstante 0.05 zorgt voor soepele interpolatie
+            gainNode.gain.setTargetAtTime(dynamicAmplitude, audioCtx.currentTime, 0.05);
+
+            // E. CSS Visuele Update (injecteer Phi in CSS variabele)
+            document.documentElement.style.setProperty('--vortex-amplitude', phiMultiplier);
+
+            // F. Update Telemetrie Scherm
+            displayW.innerText = w.toFixed(3);
+            displayPhi.innerText = phiMultiplier.toFixed(3);
+
+            // G. Loop herhalen
+            requestAnimationFrame(renderLoop);
+        }
+
+        // Event Listener: Start systeem bij user interactie
+        btnActivate.addEventListener('click', () => {
+            if (!isRunning) {
+                startVortexEngine();
+            } else {
+                // Optioneel: Stop functionaliteit
+                isRunning = false;
+                oscillator.stop();
+                audioCtx.close();
+                
+                klokbeker.classList.remove('active');
+                btnActivate.innerText = "ACTIVATE SONIC BRIDGE";
+                btnActivate.classList.remove('active-state');
+                telemetryPanel.classList.remove('visible');
+                document.documentElement.style.setProperty('--vortex-amplitude', 1);
+            }
+        });
+    </script>
+</body>
+</html>

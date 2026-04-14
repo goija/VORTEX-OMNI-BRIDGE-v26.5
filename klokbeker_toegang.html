@@ -3,323 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VORTEX OMNI-BRIDGE v26.5 // SENSOR-FIX</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <title>VORTEX OMNI-BRIDGE // MAIN HUB</title>
     <style>
+        /* --- GLOBALE STYLING --- */
         :root {
             --vortex-cyan: #00e5ff;
             --vortex-magenta: #ff00ff;
-            --vortex-vega: #ffcc00;
             --vortex-bg: #050505;
-            --vortex-amplitude: 1;
-            --vortex-rot-x: 0deg;
-            --vortex-rot-y: 0deg;
+            --vortex-alert: #ff003c;
         }
 
         body {
-            margin: 0; padding: 0;
+            margin: 0;
+            padding: 0;
             background-color: var(--vortex-bg);
             color: var(--vortex-cyan);
-            font-family: 'Courier New', monospace;
-            height: 100vh; display: flex; flex-direction: column;
-            overflow: hidden;
-            touch-action: none; /* Voorkomt scrollen tijdens swipen */
-            cursor: grab;
-        }
-        body:active { cursor: grabbing; }
-
-        .dashboard {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 15px; padding: 20px; flex-grow: 1;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            user-select: none;
         }
 
-        @media (max-width: 850px) { .dashboard { grid-template-columns: 1fr; } }
-
-        .panel {
-            border: 1px solid rgba(0, 229, 255, 0.2);
-            padding: 20px; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            background: rgba(0,0,0,0.6);
-            pointer-events: none; /* Zorgt dat sleep-events op de body aankomen */
+        /* --- HEADER --- */
+        header {
+            padding: 1.5rem 1rem;
+            border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+            text-align: center;
+            background: linear-gradient(180deg, rgba(0,229,255,0.1) 0%, transparent 100%);
         }
-
-        /* 3D Stage */
-        #stage-vortex {
-            width: 250px; height: 250px; position: relative;
-            perspective: 1000px; display: flex; justify-content: center;
-            align-items: center; transform-style: preserve-3d;
-        }
-
-        #tesseract {
-            width: 60px; height: 100px; border: 2px solid var(--vortex-magenta);
-            position: absolute; transform-style: preserve-3d;
-            transform: scale(var(--vortex-amplitude)) rotateX(var(--vortex-rot-x)) rotateY(var(--vortex-rot-y));
-            box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
-            z-index: 10;
-        }
-
-        #radar-ring {
-            width: 230px; height: 230px; border: 1px dashed var(--vortex-cyan);
-            border-radius: 50%; position: absolute;
-            transition: transform 0.05s linear;
-        }
-
-        .dot {
-            position: absolute; width: 14px; height: 14px;
-            border-radius: 50%; left: 50%; top: 50%;
-            margin-left: -7px; margin-top: -7px;
-        }
-        #dot-venus { background: var(--vortex-magenta); box-shadow: 0 0 10px var(--vortex-magenta); }
-        #dot-vega { background: var(--vortex-vega); box-shadow: 0 0 10px var(--vortex-vega); }
-
-        /* UI */
-        .input-group {
-            display: flex; gap: 10px; margin-top: 20px;
-            pointer-events: auto; /* Zorgt dat we kunnen klikken */
-        }
-
-        input {
-            background: #000; border: 1px solid var(--vortex-cyan);
-            color: var(--vortex-cyan); padding: 12px; text-align: center;
-            width: 140px; font-size: 1.1rem; outline: none;
-        }
-
-        button.btn-start {
-            background: #000; border: 1px solid var(--vortex-cyan);
-            color: var(--vortex-cyan); padding: 12px 20px; font-size: 1.1rem;
-            cursor: pointer; font-family: 'Courier New', monospace;
+        .header-title {
+            font-size: 1.5rem;
+            letter-spacing: 4px;
             font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 10px var(--vortex-cyan);
         }
-        button.btn-start:active { background: var(--vortex-cyan); color: #000; }
-
-        #terminal {
-            width: 100%; height: 120px; background: #000;
-            border: 1px solid var(--vortex-magenta); font-size: 10px;
-            padding: 10px; overflow-y: auto; color: #888; margin-top: 15px;
-            pointer-events: auto;
+        .header-sub {
+            font-size: 0.8rem;
+            color: var(--vortex-magenta);
+            margin-top: 5px;
+            letter-spacing: 2px;
         }
 
-        #qr-box { background: #fff; padding: 5px; display: none; margin-top: 10px; }
+        /* --- DASHBOARD GRID --- */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            flex-grow: 1;
+            align-content: start;
+        }
 
-        .status-bar {
-            background: #000; border-top: 1px solid var(--vortex-cyan);
-            padding: 8px 20px; font-size: 11px; display: flex;
+        .module-btn {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--vortex-cyan);
+            color: var(--vortex-cyan);
+            padding: 20px 10px;
+            text-align: center;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            min-height: 80px;
+        }
+
+        .module-btn:hover, .module-btn:active {
+            background: rgba(0, 229, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .module-btn.magenta-theme {
+            border-color: var(--vortex-magenta);
+            color: var(--vortex-magenta);
+        }
+        .module-btn.magenta-theme:hover, .module-btn.magenta-theme:active {
+            background: rgba(255, 0, 255, 0.2);
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
+        }
+
+        .module-id {
+            font-size: 0.6rem;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+        .module-name {
+            font-size: 0.9rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* --- FOOTER STATUS --- */
+        footer {
+            border-top: 1px solid rgba(0, 229, 255, 0.3);
+            padding: 10px 20px;
+            font-size: 0.7rem;
+            display: flex;
             justify-content: space-between;
+            background: #000;
         }
+        .status-ok { color: #0f0; }
     </style>
 </head>
 <body>
 
-    <div class="dashboard">
-        <div class="panel">
-            <div style="font-size: 10px; opacity: 0.6; margin-bottom: 10px;">[ DOMEIN 9: RESONATOR ]</div>
-            <div id="stage-vortex">
-                <div id="radar-ring">
-                    <div id="dot-venus" class="dot"></div>
-                    <div id="dot-vega" class="dot"></div>
-                </div>
-                <div id="tesseract"></div>
-            </div>
-            
-            <div class="input-group">
-                <input type="number" id="vortex-input" placeholder="CODE (108)" autocomplete="off">
-                <button class="btn-start" id="btn-start">START</button>
-            </div>
-            
-            <div id="sensor-log" style="color: yellow; font-size: 9px; margin-top: 10px;">Awaiting interaction...</div>
-        </div>
+    <header>
+        <div class="header-title">VORTEX OMNI-BRIDGE</div>
+        <div class="header-sub">SYSTEM VERSION v26.5</div>
+    </header>
 
-        <div class="panel">
-            <div style="font-size: 10px; opacity: 0.6; margin-bottom: 10px;">[ DOMEIN 11: M2M ]</div>
-            <div id="qr-box"></div>
-            <div id="terminal">> SYSTEM STANDBY. ENTER VECTOR 108...</div>
-        </div>
+    <div class="grid-container">
+        <a href="klokbeker_toegang.html" class="module-btn magenta-theme">
+            <span class="module-id">[ MOD 01 ]</span>
+            <span class="module-name">SENSOR TRACKER</span>
+        </a>
+        <a href="klokbeker.html" class="module-btn">
+            <span class="module-id">[ MOD 02 ]</span>
+            <span class="module-name">KLOKBEKER CORE</span>
+        </a>
+        
+        <a href="klokbekerresonator.html" class="module-btn">
+            <span class="module-id">[ MOD 03 ]</span>
+            <span class="module-name">RESONATOR A</span>
+        </a>
+        <a href="indexresornator.html" class="module-btn">
+            <span class="module-id">[ MOD 04 ]</span>
+            <span class="module-name">RESONATOR B</span>
+        </a>
+
+        <a href="hex-nexus.html" class="module-btn magenta-theme">
+            <span class="module-id">[ MOD 05 ]</span>
+            <span class="module-name">HEX-NEXUS</span>
+        </a>
+        <a href="sonc-bridge.html" class="module-btn">
+            <span class="module-id">[ MOD 06 ]</span>
+            <span class="module-name">SONC-BRIDGE</span>
+        </a>
+        <a href="penrosebridge.html" class="module-btn">
+            <span class="module-id">[ MOD 07 ]</span>
+            <span class="module-name">PENROSE BRIDGE</span>
+        </a>
+
+        <a href="inversie.html" class="module-btn">
+            <span class="module-id">[ MOD 08 ]</span>
+            <span class="module-name">INVERSIE</span>
+        </a>
+        <a href="antipodal.html" class="module-btn">
+            <span class="module-id">[ MOD 09 ]</span>
+            <span class="module-name">ANTIPODAL X</span>
+        </a>
+        <a href="antipodalN.html" class="module-btn">
+            <span class="module-id">[ MOD 10 ]</span>
+            <span class="module-name">ANTIPODAL N</span>
+        </a>
+        <a href="kubus.html" class="module-btn">
+            <span class="module-id">[ MOD 11 ]</span>
+            <span class="module-name">TESSERACT</span>
+        </a>
+
+        <a href="workload.html" class="module-btn magenta-theme">
+            <span class="module-id">[ MOD 12 ]</span>
+            <span class="module-name">SYS WORKLOAD</span>
+        </a>
+        <a href="notebook.html" class="module-btn">
+            <span class="module-id">[ MOD 13 ]</span>
+            <span class="module-name">DATA NOTEBOOK</span>
+        </a>
     </div>
 
-    <div class="status-bar">
-        <span>SUB-FREQ: 108Hz</span>
-        <span>HEADING: <span id="ui-h">0</span>°</span>
-        <span>LOCK: <span id="ui-l">NONE</span></span>
-    </div>
+    <footer>
+        <span>HOST: 192.168.2.6</span>
+        <span>NETWORK: <span class="status-ok">ONLINE</span></span>
+    </footer>
 
-    <script>
-        // --- 1. GLOBALE CONFIG ---
-        const PHI = 1.618033;
-        const VENUS_AZ = 217.7;
-        const VEGA_AZ = 315.4;
-        let isRunning = false;
-        let isManualMode = false;
-        let audioCtx, oscillator, gainNode;
-        let time = 0;
-
-        // --- 2. HOOFDLOGICA ROTATIE & TARGET LOCK ---
-        function updateHeading(heading) {
-            document.getElementById('ui-h').innerText = Math.round(heading) + (isManualMode ? ' (MANUAL)' : '');
-            
-            const ring = document.getElementById('radar-ring');
-            if (ring) ring.style.transform = `rotate(${-heading}deg)`;
-
-            const lDisplay = document.getElementById('ui-l');
-            let dVenus = Math.abs(heading - VENUS_AZ); if (dVenus > 180) dVenus = 360 - dVenus;
-            let dVega = Math.abs(heading - VEGA_AZ); if (dVega > 180) dVega = 360 - dVega;
-            const logEl = document.getElementById('sensor-log');
-
-            if (dVenus < 8) {
-                lDisplay.innerText = "VENUS"; lDisplay.style.color = "var(--vortex-magenta)";
-                logEl.innerText = "SIGNAL DETECTED: HELIOS-2";
-                logEl.style.color = "var(--vortex-magenta)";
-            } else if (dVega < 8) {
-                lDisplay.innerText = "VEGA"; lDisplay.style.color = "var(--vortex-vega)";
-                logEl.innerText = "SIGNAL DETECTED: ALPHA LYRAE";
-                logEl.style.color = "var(--vortex-vega)";
-            } else {
-                lDisplay.innerText = "NONE"; lDisplay.style.color = "var(--vortex-cyan)";
-                logEl.innerText = isManualMode ? "MANUAL SCANNING: " + Math.round(heading) + "°" : "SCANNING: " + Math.round(heading) + "°";
-                logEl.style.color = "yellow";
-            }
-        }
-
-        // --- 3. HANDMATIGE BESTURING (FALLBACK VOOR HTTP / GEEN SENSOR) ---
-        function enableManualControls() {
-            if (isManualMode) return;
-            isManualMode = true;
-            
-            document.getElementById('sensor-log').innerText = "MANUAL OVERRIDE: SWIPE TO SCAN";
-            updateHeading(0);
-            
-            let isDragging = false;
-            let startX = 0;
-            let manualHeading = 0;
-
-            const startDrag = (x) => { isDragging = true; startX = x; };
-            const doDrag = (x) => {
-                if (!isDragging) return;
-                let deltaX = x - startX;
-                manualHeading -= deltaX * 0.5; 
-                if (manualHeading < 0) manualHeading += 360;
-                if (manualHeading >= 360) manualHeading -= 360;
-                startX = x;
-                updateHeading(manualHeading);
-            };
-            const endDrag = () => { isDragging = false; };
-
-            document.addEventListener('mousedown', (e) => startDrag(e.clientX));
-            document.addEventListener('mousemove', (e) => doDrag(e.clientX));
-            document.addEventListener('mouseup', endDrag);
-
-            document.addEventListener('touchstart', (e) => startDrag(e.touches[0].clientX), {passive: false});
-            document.addEventListener('touchmove', (e) => doDrag(e.touches[0].clientX), {passive: false});
-            document.addEventListener('touchend', endDrag);
-        }
-
-        // --- 4. SENSOR HANDLER ---
-        const orientationHandler = function(event) {
-            let alpha = event.alpha;
-            if (event.absolute === true || event.webkitCompassHeading !== undefined) {
-                alpha = event.webkitCompassHeading !== undefined ? event.webkitCompassHeading : (360 - event.alpha);
-            }
-            if (alpha !== null) {
-                document.sensorFired = true;
-                if (!isManualMode) updateHeading(alpha);
-            }
-        };
-
-        // --- 5. SYSTEEM ACTIVATIE ---
-        async function startVortex() {
-            if (isRunning) return;
-
-            try {
-                let permissionGranted = true;
-                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    const permissionState = await DeviceOrientationEvent.requestPermission();
-                    if (permissionState !== 'granted') permissionGranted = false;
-                }
-
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
-                oscillator = audioCtx.createOscillator();
-                oscillator.type = 'triangle';
-                oscillator.frequency.setValueAtTime(108, audioCtx.currentTime);
-                gainNode = audioCtx.createGain();
-                gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                oscillator.connect(gainNode); 
-                gainNode.connect(audioCtx.destination);
-                oscillator.start();
-
-                document.getElementById('qr-box').style.display = 'block';
-                setTimeout(() => {
-                    new QRCode(document.getElementById("qr-box"), { text: "VORTEX_108_SYNC", width: 120, height: 120 });
-                }, 100);
-                
-                document.getElementById('terminal').innerHTML = "<div>> AUTHENTICATED: 108</div><div>> SENSORS INITIATED.</div>";
-
-                if (!permissionGranted) {
-                    enableManualControls();
-                } else {
-                    document.sensorFired = false;
-                    if (window.DeviceOrientationAbsoluteEvent) {
-                        window.addEventListener("deviceorientationabsolute", orientationHandler, true);
-                    } else {
-                        window.addEventListener("deviceorientation", orientationHandler, true);
-                    }
-                    setTimeout(() => {
-                        if (!document.sensorFired) enableManualControls();
-                    }, 1500);
-                }
-
-                isRunning = true;
-                renderLoop();
-            } catch (err) {
-                enableManualControls();
-                isRunning = true;
-                renderLoop();
-            }
-        }
-
-        // --- 6. ANIMATIE ---
-        function renderLoop() {
-            if (!isRunning) return;
-            time += 0.02;
-            const amp = Math.pow(PHI, Math.abs(Math.sin(time)));
-            document.documentElement.style.setProperty('--vortex-amplitude', amp);
-            document.documentElement.style.setProperty('--vortex-rot-x', (time * 18) + 'deg');
-            document.documentElement.style.setProperty('--vortex-rot-y', (time * 28) + 'deg');
-            
-            if (gainNode && audioCtx && audioCtx.state === 'running') {
-                gainNode.gain.setTargetAtTime(0.05 * amp, audioCtx.currentTime, 0.1);
-            }
-            requestAnimationFrame(renderLoop);
-        }
-
-        // --- 7. INITIALISATIE & EVENTS ---
-        window.onload = () => {
-            document.getElementById('dot-venus').style.transform = `rotate(${VENUS_AZ}deg) translateY(-115px)`;
-            document.getElementById('dot-vega').style.transform = `rotate(${VEGA_AZ}deg) translateY(-115px)`;
-
-            const inputEl = document.getElementById('vortex-input');
-            const btnStart = document.getElementById('btn-start');
-
-            function checkAuth() {
-                if (inputEl.value === '108') {
-                    startVortex();
-                    inputEl.disabled = true;
-                    btnStart.disabled = true;
-                    inputEl.value = "[ LOCKED ]";
-                } else {
-                    document.getElementById('terminal').innerHTML += "<div>> ACCESS DENIED.</div>";
-                    inputEl.value = "";
-                }
-            }
-
-            // Fix voor mobiel: Werkt nu op knopklik én Enter-toets
-            btnStart.addEventListener('click', checkAuth);
-            inputEl.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' || e.keyCode === 13) {
-                    e.preventDefault();
-                    checkAuth();
-                }
-            });
-        };
-    </script>
 </body>
 </html>
