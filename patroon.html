@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VORTEX OMNI-BRIDGE // MULTILINGUAL ELS DECODER</title>
+    <style>
+        :root {
+            --neon-green: #00ff41;
+            --neon-blue: #00d2ff;
+            --neon-purple: #b026ff;
+            --dark-bg: #0a0a0a;
+            --panel-bg: #141414;
+        }
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: var(--dark-bg);
+            color: var(--neon-green);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        header {
+            padding: 15px;
+            border-bottom: 2px solid var(--neon-purple);
+            background: var(--panel-bg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+        .viewport { flex: 1; padding: 20px; overflow-y: auto; border: 1px solid #333; display: flex; flex-direction: column; }
+        #view-left { border-right: 2px solid var(--neon-purple); flex: 1.5; }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(18, 1fr);
+            gap: 2px;
+            background-color: #333;
+            padding: 4px;
+            width: fit-content;
+        }
+        .cell {
+            width: 32px; height: 32px;
+            background-color: #000;
+            font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s;
+        }
+        
+        /* 4D Resonantie Animatie */
+        @keyframes pulse {
+            0% { background-color: var(--neon-purple); box-shadow: 0 0 5px var(--neon-purple); }
+            50% { background-color: var(--neon-blue); box-shadow: 0 0 20px var(--neon-blue); color: #000; }
+            100% { background-color: var(--neon-purple); box-shadow: 0 0 5px var(--neon-purple); }
+        }
+
+        .els-path { animation: pulse 2s infinite ease-in-out; color: #fff; }
+        .els-start { background-color: #fff !important; color: #000; font-weight: bold; }
+
+        .console {
+            background: #000; border: 1px dashed var(--neon-purple);
+            padding: 15px; font-size: 13px; flex-grow: 1; overflow-y: auto; color: var(--neon-blue);
+        }
+        .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+        select, input, button {
+            background: #000; border: 1px solid var(--neon-purple); color: #fff;
+            padding: 5px; font-family: monospace; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div id="ui-title" style="font-size: 20px; font-weight: bold;">VORTEX OMNI-BRIDGE</div>
+    <select id="lang-select" onchange="updateLanguage()">
+        <option value="nl">Nederlands 🇳🇱</option>
+        <option value="la">Latinum 🏛️</option>
+        <option value="cy">Кирилица 🪆</option>
+        <option value="he">עברית 📜</option>
+    </select>
+</header>
+
+<div class="main-container">
+    <div id="view-left" class="viewport">
+        <h2 id="ui-grid-label">MAGNETISCH VELD (18x13)</h2>
+        <div class="controls">
+            <input type="number" id="els-start" value="144" title="Startpunt">
+            <input type="number" id="els-step" value="29" title="Sprongbreedte">
+            <button id="ui-btn-trace" onclick="runELS()">TRACE ELS</button>
+            <button onclick="clearGrid()">RESET</button>
+        </div>
+        <div id="magnetic-grid" class="grid-container"></div>
+    </div>
+    <div id="view-right" class="viewport">
+        <h2 id="ui-console-label">ELS DATA EXTRACTIE</h2>
+        <div class="console" id="console-log">> System Ready...</div>
+    </div>
+</div>
+
+<script>
+    const alphabets = {
+        nl: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        la: "ABCDEFGHIKLMNOPQRSTVXYZ",
+        cy: "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ",
+        he: "אבגדהוזחטיכלמנסעפצקרשת"
+    };
+
+    const uiStrings = {
+        nl: { title: "VORTEX OMNI-BRIDGE", grid: "MAGNETISCH VELD", console: "DATA EXTRACTIE", trace: "START TRACE" },
+        la: { title: "PONTIS VORTICIS", grid: "CAMPUS MAGNETICUS", console: "EXTRACTIO DATA", trace: "INCIPIE VIA" },
+        cy: { title: "ВИХРЕВОЙ МОСТ", grid: "МАГНИТНОЕ ПОЛЕ", console: "ИЗВЛЕЧЕНИЕ ДАННЫХ", trace: "НАЧАТЬ ПУТЬ" },
+        he: { title: "גשר המערבולת", grid: "שדה מגנטי", console: "חילוץ נתונים", trace: "התחל נתיב" }
+    };
+
+    let currentLang = 'nl';
+    const totalCells = 234;
+    const grid = document.getElementById('magnetic-grid');
+    const cells = [];
+
+    function initGrid() {
+        grid.innerHTML = '';
+        cells.length = 0;
+        const alpha = alphabets[currentLang];
+        for (let i = 0; i < totalCells; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.innerText = alpha[i % alpha.length];
+            cell.onclick = () => document.getElementById('els-start').value = i + 1;
+            grid.appendChild(cell);
+            cells.push(cell);
+        }
+    }
+
+    function updateLanguage() {
+        currentLang = document.getElementById('lang-select').value;
+        const ui = uiStrings[currentLang];
+        document.getElementById('ui-title').innerText = ui.title;
+        document.getElementById('ui-grid-label').innerText = ui.grid;
+        document.getElementById('ui-console-label').innerText = ui.console;
+        document.getElementById('ui-btn-trace').innerText = ui.trace;
+        initGrid();
+    }
+
+    function runELS() {
+        cells.forEach(c => c.classList.remove('els-path', 'els-start'));
+        const start = parseInt(document.getElementById('els-start').value) - 1;
+        const step = parseInt(document.getElementById('els-step').value);
+        const log = document.getElementById('console-log');
+        
+        let current = start;
+        let path = [];
+        let decodedString = "";
+
+        while (!path.includes(current) && path.length < totalCells) {
+            path.push(current);
+            cells[current].classList.add(current === start ? 'els-start' : 'els-path');
+            decodedString += cells[current].innerText;
+            current = (current + step) % totalCells;
+        }
+        
+        log.innerHTML = `> DECODED STRING: <br><strong style="font-size:18px; color:white;">${decodedString}</strong>`;
+    }
+
+    function clearGrid() {
+        cells.forEach(c => c.classList.remove('els-path', 'els-start'));
+        document.getElementById('console-log').innerHTML = "> Grid Reset.";
+    }
+
+    initGrid();
+</script>
+</body>
+</html>
